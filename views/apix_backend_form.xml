@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_apix_backend_form" model="ir.ui.view">
+        <field name="name">apix.backend.form</field>
+        <field name="model">apix.backend</field>
+        <field name="arch" type="xml">
+            <form string="Apix Backend">
+                <header>
+                    <button name="action_retrieve_transfer_id"
+                            type="object"
+                            class="oe_highlight"
+                            string="Get transfer ID"/>
+                </header>
+
+                <sheet>
+                    <label for="name" class="oe_edit_only"/>
+                    <h1>
+                        <field name="name" class="oe_inline"/>
+                    </h1>
+                    <group name="apix_configuration" string="Apix Configuration">
+                        <notebook>
+                            <page string="API" name="api">
+                                <group name="api_settings" group="base.group_erp_manager">
+                                    <group>
+                                        <field name="username" />
+                                        <field name="password" password="1" />
+                                        <field name="prefix" />
+                                    </group>
+                                    <group>
+                                        <field name="company_id" />
+                                        <field name="version" />
+                                        <field name="environment" />
+                                    </group>
+                                </group>
+
+                                <group name="api_transfer" groups="base.group_system">
+                                    <field name="transfer_id" />
+                                    <field name="transfer_key" />
+                                    <field name="company_uuid" />
+                                    <field name="id_qualifier" />
+                                </group>
+                            </page>
+                        </notebook>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+</odoo>

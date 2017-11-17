@@ -22,7 +22,7 @@
 {
     'name': 'APIX Connector',
     'summary': 'APIX EDI connector for receiving and sending eInvoices',
-    'version': '10.0.0.1.0',
+    'version': '10.0.0.2.0',
     'category': 'Connector',
     'website': 'http://www.tawasta.fi',
     'author': 'Oy Tawasta Technologies Ltd.',
@@ -37,6 +37,7 @@
         'connector',
     ],
     'data': [
+        'views/apix_backend_form.xml',
         'views/connector_apix_menu.xml',
     ],
     'demo': [
