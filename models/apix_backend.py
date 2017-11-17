@@ -17,7 +17,8 @@ class ApixBackend(models.Model):
     _inherit = 'connector.backend'
 
     _FIELD_STATES = {
-        'unconfirmed': [('readonly', True)],
+        'confirmed': [('readonly', True)],
+        'unconfirmed': [('readonly', False)],
     }
 
     # Backends start as unconfirmed
