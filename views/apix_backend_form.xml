@@ -11,6 +11,11 @@
                             type="object"
                             class="oe_highlight"
                             string="Get transfer ID"/>
+
+                    <button name="action_authenticate_by_user"
+                            type="object"
+                            class=""
+                            string="Authenticate user"/>
                 </header>
 
                 <sheet>
@@ -20,7 +25,7 @@
                     </h1>
                     <group name="apix_configuration" string="Apix Configuration">
                         <notebook>
-                            <page string="API" name="api">
+                            <page name="api" string="API">
                                 <group name="api_settings" group="base.group_erp_manager">
                                     <group>
                                         <field name="username" />
@@ -38,7 +43,18 @@
                                     <field name="transfer_id" />
                                     <field name="transfer_key" />
                                     <field name="company_uuid" />
+                                    <field name="business_id" />
                                     <field name="id_qualifier" />
+                                </group>
+                            </page>
+
+                            <page name="info" string="Info">
+                                <group>
+                                    <field name="customer_id" invisible='1' /> <!-- This is identical with customer number -->
+                                    <field name="customer_number" />
+                                    <field name="contact_person" />
+                                    <field name="contact_email" />
+                                    <field name="owner_id" />
                                 </group>
                             </page>
                         </notebook>
