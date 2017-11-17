@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <record id="invoice_form" model="ir.ui.view">
+        <field name="name">APIX EDI Invoice</field>
+        <field name="model">account.invoice</field>
+        <field name="inherit_id" ref="account.invoice_form"/>
+        <field name="arch" type="xml">
+
+            <!-- Add an eInvoice sending buttons -->
+            <!-- Use ambiguous "button[1]" to support replacing or removing header buttons in other modules -->
+            <!-- TODO: add invoice transmit types -->
+            <xpath expr="//button[1]" position="after">
+                <field name="date_einvoice_sent" invisible="1" />
+
+                <button name="action_einvoice_send"
+                        type="object"
+                        string="Send eInvoice"
+                        class="oe_highlight"
+                        groups="account.group_account_invoice"
+                        attrs="{'invisible':[
+                        '|',
+                        ('date_einvoice_sent', '!=', False),
+                        ('state', 'not in', ['open', 'paid']),
+                        ]}"
+                />
+
+                <button name="action_einvoice_send"
+                        type="object"
+                        string="Send via printing service"
+                        class="oe_highlight"
+                        groups="account.group_account_invoice"
+                        attrs="{'invisible':[
+                        '|',
+                        ('date_einvoice_sent', '!=', False),
+                        ('state', 'not in', ['open', 'paid']),
+                        ]}"
+                />
+            </xpath>
+        </field>
+    </record>
+</odoo>
