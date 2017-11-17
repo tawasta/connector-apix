@@ -7,15 +7,21 @@
         <field name="arch" type="xml">
             <form string="Apix Backend">
                 <header>
-                    <button name="action_retrieve_transfer_id"
+                    <button name="action_authenticate"
                             type="object"
                             class="oe_highlight"
-                            string="Get transfer ID"/>
+                            string="Authenticate"
+                            attrs="{'invisible': [('state', '=', 'confirmed')]}"
+                    />
 
-                    <button name="action_authenticate_by_user"
+                    <button name="action_reset_authentication"
                             type="object"
                             class=""
-                            string="Authenticate user"/>
+                            string="Reset authentication"
+                            attrs="{'invisible': [('state', '=', 'unconfirmed')]}"
+                    />
+
+                    <field name="state" widget="statusbar" />
                 </header>
 
                 <sheet>

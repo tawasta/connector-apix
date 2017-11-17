@@ -16,39 +16,65 @@ class ApixBackend(models.Model):
     _description = 'APIX Backend'
     _inherit = 'connector.backend'
 
+    _FIELD_STATES = {
+        'unconfirmed': [('readonly', True)],
+    }
+
+    # Backends start as unconfirmed
+    state = fields.Selection(
+        string='State',
+        selection=[
+            ('unconfirmed', 'Unconfirmed'),
+            ('confirmed', 'Confirmed'),
+        ],
+        default='unconfirmed',
+    )
+
+    # Company for multicompany environments
     company_id = fields.Many2one(
         comodel_name='res.company',
         required=True,
         default=lambda self: self.env['res.users'].browse([self._uid]).company_id,
+        states=_FIELD_STATES,
     )
 
+    # Apix username (email)
     username = fields.Char(
         string='Username',
         required=True,
+        states=_FIELD_STATES,
     )
 
+    # Apix password
     password = fields.Char(
         string='Password',
         required=True,
         copy=False,
+        states=_FIELD_STATES,
     )
 
+    # Apix API version
     version = fields.Selection(
         string='Version',
         selection=[('1.14', 'v1.14')],
         default='1.14',
         required=True,
+        states=_FIELD_STATES,
     )
 
+    # Apix environment
     environment = fields.Selection(
         string='Environment',
         selection=[('test', 'Test'), ('production', 'Production')],
         default='test',
         required=True,
+        states=_FIELD_STATES,
     )
 
+    # An optional prefix for business ids. Apix may assign this to virtual operators
     prefix = fields.Char(
         string='Prefix',
+        states=_FIELD_STATES,
     )
 
     # The identification used for sending and receiving
@@ -91,18 +117,22 @@ class ApixBackend(models.Model):
     customer_id = fields.Char(
         string='Customer ID',
     )
+
     # CustomerNumber
     customer_number = fields.Char(
         string='Customer number',
     )
+
     # ContactPerson
     contact_person = fields.Char(
         string='Contact person',
     )
+
     # Email
     contact_email = fields.Char(
         string='Contact email',
     )
+
     # OwnerId
     owner_id = fields.Char(
         string='Owner ID'
@@ -114,13 +144,22 @@ class ApixBackend(models.Model):
             business_id = prefix + record.company_id.company_registry
             record.business_id = business_id
 
-    def action_retrieve_transfer_id(self):
+    def action_authenticate(self):
+        # A helper method for testing the authentication
         for record in self:
             record.RetrieveTransferID()
-
-    def action_authenticate_by_user(self):
-        for record in self:
             record.AuthenticateByUser()
+
+            # Everything is fine (no errors). Set this as confirmed
+            record.state = 'confirmed'
+
+    def action_reset_authentication(self):
+        # A helper method for resetting the authentication
+        for record in self:
+            record.transfer_id = False
+            record.transfer_key = False
+            record.company_uuid = False
+            record.state = 'unconfirmed'
 
     def get_digest(self, values):
         # Returns the digest needed for requests
