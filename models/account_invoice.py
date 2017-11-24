@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from odoo import fields, models, api
-#from odoo.addons.connector.queue.job import job
+from odoo.addons.queue_job.job import job
+import logging
+_logger = logging.getLogger(__name__)
 
 
 class AccountInvoice(models.Model):
@@ -15,15 +17,11 @@ class AccountInvoice(models.Model):
     @api.multi
     def action_einvoice_send(self):
         for record in self:
-            # TODO: ivoice transmit type check
-            record.apix_send_invoice()
+            # Send without delay so the user will get the error immediately
+            record.einvoice_send()
 
     @api.multi
-    #@job
-    def apix_send_invoice(self):
-        # Sends the invoice to APIX
-
-        # Jobs should be created for one invoice at the time
-        self.ensure_one()
-
-        print self.finvoice_xml
+    @job
+    def einvoice_send(self):
+        for record in self:
+            _logger.info("Sending '%s' as einvoice" % record.name)

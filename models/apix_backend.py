@@ -243,7 +243,6 @@ class ApixBackend(models.Model):
 
         return groups
 
-
     # RetrieveTransferID API method
     def RetrieveTransferID(self):
         logger.debug('APIX RetrieveTransferId')
