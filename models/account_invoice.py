@@ -51,12 +51,12 @@ class AccountInvoice(models.Model):
             msg = _("You can only send eInvoice if the invoice is open or paid")
 
         # VAT number is missing
-        elif self.invoice_transmit_type in ['einvoice'] and not self.partner_id.vat:
+        elif self.invoice_transmit_method in ['einvoice'] and not self.partner_id.vat:
             msg = _("Please set VAT number for the customer '%s' before sending an eInvoice.") \
                   % self.partner_id.name
 
         # Wrong invoice transmit type
-        elif self.invoice_transmit_type not in ['einvoice', 'paper']:
+        elif self.invoice_transmit_method not in ['einvoice', 'paper']:
             msg = _("This invoice has been marked to be sent manually.")
 
         elif not self.partner_bank_id:
