@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 import logging
+import zipfile
+import cStringIO
+import base64
+
 from odoo import fields, models, api
 from odoo import _
 from odoo.addons.queue_job.job import job
@@ -26,6 +30,61 @@ class AccountInvoice(models.Model):
             record.with_delay().einvoice_send()
 
     @api.multi
+    def get_apix_backend(self):
+        self.ensure_one()
+
+        if not self.company_id:
+            raise ValidationError(_('This invoice has no company.'))
+
+        backend = self.env['apix.backend'].search([
+            ('company_id', '=', self.company_id.id),
+        ], limit=1)
+
+        return backend
+
+    @api.multi
+    def get_apix_payload(self):
+        self.ensure_one()
+
+        _logger.debug("Generating APIX payload for '%s'" % self.name)
+
+        file_name = 'finvoice_%s' % self.invoice_number
+        xml_name = '%s.xml' % file_name
+        pdf_name = '%s.pdf' % file_name
+
+        # Get the PDF
+        # TODO: configurable invoice template
+        report_name = 'account.report_invoice'
+        pdf = self.env['report'].get_pdf(self.ids, report_name)
+
+        # Get attachments
+        attachments = self.env['ir.attachment'].search([
+            ('res_model', '=', 'account.invoice'),
+            ('res_id', 'in', self.ids),
+        ])
+
+        in_memory_zip = cStringIO.StringIO()
+        with zipfile.ZipFile(in_memory_zip, 'w') as payload_zip:
+
+            # Wtite the XML-file to zip
+            payload_zip.writestr(xml_name, self.finvoice_xml)
+
+            # Write the PDF-file to zip (the attachment iteration should do this)
+            # payload_zip.writestr(pdf_name, pdf)
+
+            # Iterate through all the attachments
+            for attachment in attachments:
+                # Write the file to the cached zip
+                file_name = attachment.name or 'attachment';
+                payload_zip.writestr(file_name, base64.b64decode(attachment.datas))
+
+        payload = in_memory_zip.getvalue()
+
+        _logger.debug("APIX payload for '%s' generated" % self.name)
+
+        return payload
+
+    @api.multi
     @job
     def einvoice_send(self):
         for record in self:
@@ -35,6 +94,20 @@ class AccountInvoice(models.Model):
                 ['invoice_transmit_method']['selection'])[self.invoice_transmit_method]
 
             _logger.debug("Sending '%s' as '%s'" % (record.name, transmit_method))
+
+            backend = record.get_apix_backend()
+
+            if not backend:
+                raise Exception(_("No backend found"))
+
+            _logger.debug("Using backend %s" % backend.name)
+
+            payload = record.get_apix_payload()
+
+            # TODO: remove this
+            # tmp_file = open('/tmp/apix_test_%s.zip' % self.invoice_number, 'w')
+            # tmp_file.write(payload)
+            # tmp_file.close()
 
             record.message_post(_('Invoice sent as "%s"') % transmit_method)
             _logger.debug("Sent '%s' as '%s'" % (record.name, transmit_method))

@@ -16,6 +16,11 @@ class ApixBackend(models.Model):
     _description = 'APIX Backend'
     _inherit = 'connector.backend'
 
+    _sql_constraints = [
+        ('company_uniq', 'unique(company_id)',
+         'Company can have only one backend.'),
+    ]
+
     _FIELD_STATES = {
         'confirmed': [('readonly', True)],
         'unconfirmed': [('readonly', False)],
@@ -291,3 +296,33 @@ class ApixBackend(models.Model):
             self.contact_person = response.get('ContactPerson', False)
             self.contact_email = response.get('Email', False)
             self.owner_id = response.get('OwnerId', False)
+
+    def SendInvoiceZIP(self, payload):
+        logger.debug("APIX SendInvoiceZIP")
+
+        values = OrderedDict()
+
+        values['soft'] = "Standard"
+        values['ver'] = "1.0"
+        values['TraID'] = self.transfer_id
+        values['t'] = self.get_timestamp()
+        values['TraKey'] = self.transfer_key
+
+        # Get the digest hash
+        values['d'] = self.get_digest(values)
+
+        # Remove TransferKey. We don't want it to the url
+        del values['TraKey']
+
+        command = 'invoices'
+        url = self.get_url(command, values)
+
+        # Post the file to the server
+        res = requests.put(url, data=payload)
+
+        # Response to dict, return the relevant part of the response
+        values = self.response_to_dict(res).itervalues().next()
+
+        return values
+
+
