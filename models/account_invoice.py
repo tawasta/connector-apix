@@ -89,9 +89,7 @@ class AccountInvoice(models.Model):
     def einvoice_send(self):
         for record in self:
             # Transmit method name
-            transmit_method = dict(
-                self.fields_get(['invoice_transmit_method'])
-                ['invoice_transmit_method']['selection'])[self.invoice_transmit_method]
+            transmit_method = record.transmit_method_id.name
 
             _logger.debug("Sending '%s' as '%s'" % (record.name, transmit_method))
 
@@ -124,12 +122,12 @@ class AccountInvoice(models.Model):
             msg = _("You can only send eInvoice if the invoice is open or paid")
 
         # VAT number is missing
-        elif self.invoice_transmit_method in ['einvoice'] and not self.partner_id.vat:
+        elif self.transmit_method_code in ['einvoice'] and not self.partner_id.vat:
             msg = _("Please set VAT number for the customer '%s' before sending an eInvoice.") \
                   % self.partner_id.name
 
         # Wrong invoice transmit type
-        elif self.invoice_transmit_method not in ['einvoice', 'paper']:
+        elif self.transmit_method_code not in ['einvoice', 'printing_service']:
             msg = _("This invoice has been marked to be sent manually.")
 
         elif not self.partner_bank_id:

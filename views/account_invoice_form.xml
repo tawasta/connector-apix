@@ -3,7 +3,7 @@
     <record id="invoice_form" model="ir.ui.view">
         <field name="name">APIX EDI Invoice</field>
         <field name="model">account.invoice</field>
-        <field name="inherit_id" ref="partner_invoice_transmit_method.invoice_form"/>
+        <field name="inherit_id" ref="account_invoice_transmit_method.invoice_form"/>
         <field name="arch" type="xml">
 
             <!-- Add an eInvoice sending buttons -->
@@ -20,7 +20,7 @@
                         attrs="{'invisible':[
                         '|', '|',
                         ('date_einvoice_sent', '!=', False),
-                        ('invoice_transmit_method', 'not in', ('einvoice')),
+                        ('transmit_method_code', 'not in', ('einvoice')),
                         ('state', 'not in', ['open', 'paid']),
                         ]}"
                 />
@@ -33,7 +33,7 @@
                         attrs="{'invisible':[
                         '|', '|',
                         ('date_einvoice_sent', '!=', False),
-                        ('invoice_transmit_method', 'not in', ('paper')),
+                        ('transmit_method_code', 'not in', ('printing_service')),
                         ('state', 'not in', ['open', 'paid']),
                         ]}"
                 />
