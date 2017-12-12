@@ -36,6 +36,20 @@ class AccountInvoice(models.Model):
 
         return finvoice_object
 
+    def _get_finvoice_message_sender_details(self):
+        MessageSenderDetailsType = super(AccountInvoice, self)._get_finvoice_message_sender_details()
+        MessageSenderDetailsType.set_FromIntermediator('APIX')
+
+        return MessageSenderDetailsType
+
+    def _get_finvoice_message_receiver_details(self):
+        MessageReceiverDetailsType = super(AccountInvoice, self)._get_finvoice_message_receiver_details()
+
+        if self.transmit_method_id.code == 'printing_service':
+            MessageReceiverDetailsType.set_ToIdentifier('TULOSTUS')
+
+        return MessageReceiverDetailsType
+
     def add_finvoice_apix_fields(self, finvoice_object):
         latest_invoice_pdf = self._get_latest_invoice_pdf()
         pdf_url = 'file://%s' % latest_invoice_pdf.name
