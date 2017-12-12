@@ -324,7 +324,7 @@ class ApixBackend(models.Model):
 
         self.validateResponse(res)
 
-        return values
+        return True
 
     def validateResponse(self, response):
         try:
@@ -342,6 +342,8 @@ class ApixBackend(models.Model):
         except KeyError:
             raise Exception('Invalid response: status not found')
 
+        logger.debug('Response status: %s' % response_status)
+
         if response_status == 'ERR':
             try:
                 error = dict(response['FreeText'][1])['#text']
@@ -352,3 +354,10 @@ class ApixBackend(models.Model):
 
             raise Exception(msg)
 
+        if response_status == 'OK':
+            try:
+                content = response['Content']['Group'][0]['Value']
+                logger.debug(content)
+
+            except:
+                logger.warning('Error while trying to parse response')

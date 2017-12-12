@@ -159,6 +159,9 @@ class AccountInvoice(models.Model):
             response = backend.SendInvoiceZIP(payload)
             _logger.debug("Response for '%s': %s" % (record.invoice_number, response))
 
+            self.date_einvoice_sent = fields.Date.today()
+            self.sent = True
+
             record.message_post(_('Invoice sent as "%s"') % transmit_method)
             _logger.debug("Sent '%s' as '%s'" % (record.invoice_number, transmit_method))
 
