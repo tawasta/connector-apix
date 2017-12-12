@@ -29,6 +29,41 @@ class AccountInvoice(models.Model):
             # Add sending to queue
             record.with_delay().einvoice_send()
 
+    def _get_finvoice_object(self):
+        finvoice_object = super(AccountInvoice, self)._get_finvoice_object()
+
+        self.add_finvoice_apix_fields(finvoice_object)
+
+        return finvoice_object
+
+    def add_finvoice_apix_fields(self, finvoice_object):
+        latest_invoice_pdf = self._get_latest_invoice_pdf()
+        pdf_url = 'file://%s' % latest_invoice_pdf.name
+
+        finvoice_object.set_InvoiceUrlNameText(['APIX_PDFFILE'])
+        finvoice_object.set_InvoiceUrlText([pdf_url])
+
+    def _get_latest_invoice_pdf(self):
+        # Get latest invoice pdf attachment
+        # TODO: this is far from being 100% reliable, as it only gets the latest pdf-attachment
+
+        attachment_model = self.env['ir.attachment']
+        search_domain = list()
+
+        search_domain.append(('res_id', '=', self.id))
+        search_domain.append(('res_model', '=', self._name))
+        search_domain.append(('mimetype', '=', 'application/pdf'))
+
+        # TODO: tag attachments as invoice pdf:s
+        '''
+        if hasattr(attachment_model, 'tag_field'):
+            search_domain.append(('tag_field', '=', 'correct_tag'))
+        '''
+
+        attachment = attachment_model.search(search_domain, order='id DESC', limit=1)
+
+        return attachment
+
     @api.multi
     def get_apix_backend(self):
         self.ensure_one()
@@ -46,7 +81,7 @@ class AccountInvoice(models.Model):
     def get_apix_payload(self):
         self.ensure_one()
 
-        _logger.debug("Generating APIX payload for '%s'" % self.name)
+        _logger.debug("Generating APIX payload for '%s'" % self.invoice_number)
 
         file_name = 'finvoice_%s' % self.invoice_number
         xml_name = '%s.xml' % file_name
@@ -66,7 +101,7 @@ class AccountInvoice(models.Model):
         in_memory_zip = cStringIO.StringIO()
         with zipfile.ZipFile(in_memory_zip, 'w') as payload_zip:
 
-            # Wtite the XML-file to zip
+            # Write the XML-file to zip
             payload_zip.writestr(xml_name, self.finvoice_xml)
 
             # Write the PDF-file to zip (the attachment iteration should do this)
@@ -80,7 +115,7 @@ class AccountInvoice(models.Model):
 
         payload = in_memory_zip.getvalue()
 
-        _logger.debug("APIX payload for '%s' generated" % self.name)
+        _logger.debug("APIX payload for '%s' generated" % self.invoice_number)
 
         return payload
 
@@ -91,7 +126,7 @@ class AccountInvoice(models.Model):
             # Transmit method name
             transmit_method = record.transmit_method_id.name
 
-            _logger.debug("Sending '%s' as '%s'" % (record.name, transmit_method))
+            _logger.debug("Sending '%s' as '%s'" % (record.invoice_number, transmit_method))
 
             backend = record.get_apix_backend()
 
@@ -103,12 +138,12 @@ class AccountInvoice(models.Model):
             payload = record.get_apix_payload()
 
             # TODO: remove this
-            # tmp_file = open('/tmp/apix_test_%s.zip' % self.invoice_number, 'w')
-            # tmp_file.write(payload)
-            # tmp_file.close()
+            tmp_file = open('/tmp/apix_test_%s.zip' % self.invoice_number, 'w')
+            tmp_file.write(payload)
+            tmp_file.close()
 
             record.message_post(_('Invoice sent as "%s"') % transmit_method)
-            _logger.debug("Sent '%s' as '%s'" % (record.name, transmit_method))
+            _logger.debug("Sent '%s' as '%s'" % (record.invoice_number, transmit_method))
 
     @api.multi
     def validate_einvoice(self):
