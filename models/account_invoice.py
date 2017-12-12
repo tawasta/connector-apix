@@ -104,7 +104,7 @@ class AccountInvoice(models.Model):
             # Write the XML-file to zip
             payload_zip.writestr(xml_name, self.finvoice_xml)
 
-            # Write the PDF-file to zip (the attachment iteration should do this)
+            # Write the PDF-file to zip (the attachment iteration below should do this)
             # payload_zip.writestr(pdf_name, pdf)
 
             # Iterate through all the attachments
@@ -141,6 +141,9 @@ class AccountInvoice(models.Model):
             tmp_file = open('/tmp/apix_test_%s.zip' % self.invoice_number, 'w')
             tmp_file.write(payload)
             tmp_file.close()
+
+            response = backend.SendInvoiceZIP(payload)
+            _logger.debug("Response for '%s': %s" % (record.invoice_number, response))
 
             record.message_post(_('Invoice sent as "%s"') % transmit_method)
             _logger.debug("Sent '%s' as '%s'" % (record.invoice_number, transmit_method))

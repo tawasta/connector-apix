@@ -3,6 +3,8 @@ import hashlib
 import logging
 import datetime
 import requests
+import xmltodict
+
 from lxml import etree as ET
 from collections import OrderedDict
 
@@ -320,9 +322,33 @@ class ApixBackend(models.Model):
         # Post the file to the server
         res = requests.put(url, data=payload)
 
-        # Response to dict, return the relevant part of the response
-        values = self.response_to_dict(res).itervalues().next()
+        self.validateResponse(res)
 
         return values
 
+    def validateResponse(self, response):
+        try:
+            values = xmltodict.parse(response.text)
+        except:
+            raise Exception('Parse error while handling response from APIX API')
+
+        try:
+            response = values['Response']
+        except KeyError:
+            raise Exception('Invalid response: response not found')
+
+        try:
+            response_status = response['Status']
+        except KeyError:
+            raise Exception('Invalid response: status not found')
+
+        if response_status == 'ERR':
+            try:
+                error = dict(response['FreeText'][1])['#text']
+            except:
+                error = 'Unknown'
+
+            msg = 'API Error (%s): %s' % (response.get('StatusCode', 'Unknown'), error)
+
+            raise Exception(msg)
 
