@@ -152,9 +152,9 @@ class AccountInvoice(models.Model):
             payload = record.get_apix_payload()
 
             # TODO: remove this
-            tmp_file = open('/tmp/apix_test_%s.zip' % self.invoice_number, 'w')
-            tmp_file.write(payload)
-            tmp_file.close()
+            # tmp_file = open('/tmp/apix_test_%s.zip' % self.invoice_number, 'w')
+            # tmp_file.write(payload)
+            # tmp_file.close()
 
             response = backend.SendInvoiceZIP(payload)
             _logger.debug("Response for '%s': %s" % (record.invoice_number, response))
