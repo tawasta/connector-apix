@@ -9,7 +9,7 @@
     </record>
 
     <menuitem id="menu_apix_root"
-        parent="connector.menu_connector_root"
+        parent="connector.menu_connector"
         name="Apix"
         sequence="10"
         groups="connector.group_connector_manager"/>

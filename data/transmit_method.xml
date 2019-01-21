@@ -2,12 +2,12 @@
 
 <odoo noupdate="1">
 
-    <record id="einvoice" model="transmit.method">
+    <record id="account_invoice_transmit_method.einvoice" model="transmit.method">
         <field name="code">einvoice</field>
         <field name="name">eInvoice</field>
     </record>
 
-    <record id="printing_service" model="transmit.method">
+    <record id="account_invoice_transmit_method.printing_service" model="transmit.method">
         <field name="code">printing_service</field>
         <field name="name">Printing service</field>
     </record>
