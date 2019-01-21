@@ -8,8 +8,8 @@ import xmltodict
 from lxml import etree as ET
 from collections import OrderedDict
 
-from odoo import api, fields, models
-from odoo.exceptions import Warning
+from odoo import api, fields, models, _
+from odoo.exceptions import Warning, ValidationError
 logger = logging.getLogger(__name__)
 
 
@@ -330,17 +330,23 @@ class ApixBackend(models.Model):
         try:
             values = xmltodict.parse(response.text)
         except:
-            raise Exception('Parse error while handling response from APIX API')
+            raise ValidationError(
+                _('Parse error while handling response from APIX API')
+            )
 
         try:
             response = values['Response']
         except KeyError:
-            raise Exception('Invalid response: response not found')
+            raise ValidationError(
+                _('Invalid response: response not found')
+            )
 
         try:
             response_status = response['Status']
         except KeyError:
-            raise Exception('Invalid response: status not found')
+            raise ValidationError(
+                _('Invalid response: status not found')
+            )
 
         logger.debug('Response status: %s' % response_status)
 
@@ -350,9 +356,10 @@ class ApixBackend(models.Model):
             except:
                 error = 'Unknown'
 
-            msg = 'API Error (%s): %s' % (response.get('StatusCode', 'Unknown'), error)
+            msg = 'API Error (%s): %s' % \
+                  (response.get('StatusCode', 'Unknown'), error)
 
-            raise Exception(msg)
+            raise ValidationError(msg)
 
         if response_status == 'OK':
             try:
@@ -360,4 +367,6 @@ class ApixBackend(models.Model):
                 logger.debug(content)
 
             except:
-                logger.warning('Error while trying to parse response')
+                msg = _('Error while trying to parse response')
+                raise ValidationError(msg)
+                logger.warning(msg)
