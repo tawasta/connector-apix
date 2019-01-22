@@ -26,6 +26,10 @@ class AccountInvoice(models.Model):
         for record in self:
             record.validate_einvoice()
 
+            # Set einvoice as sent
+            # NOTE! This expects the job to succeed
+            record.date_einvoice_sent = fields.Date.today()
+
             # Add sending to queue
             record.with_delay().einvoice_send()
 
@@ -37,13 +41,15 @@ class AccountInvoice(models.Model):
         return finvoice_object
 
     def _get_finvoice_message_sender_details(self):
-        MessageSenderDetailsType = super(AccountInvoice, self)._get_finvoice_message_sender_details()
+        MessageSenderDetailsType = \
+            super(AccountInvoice, self)._get_finvoice_message_sender_details()
         MessageSenderDetailsType.set_FromIntermediator('APIX')
 
         return MessageSenderDetailsType
 
     def _get_finvoice_message_receiver_details(self):
-        MessageReceiverDetailsType = super(AccountInvoice, self)._get_finvoice_message_receiver_details()
+        MessageReceiverDetailsType = \
+            super(AccountInvoice, self)._get_finvoice_message_receiver_details()
 
         if self.transmit_method_id.code == 'printing_service':
             MessageReceiverDetailsType.set_ToIdentifier('TULOSTUS')
@@ -59,7 +65,8 @@ class AccountInvoice(models.Model):
 
     def _get_latest_invoice_pdf(self):
         # Get latest invoice pdf attachment
-        # TODO: this is far from being 100% reliable, as it only gets the latest pdf-attachment
+        # TODO: this is far from being 100% reliable,
+        #  as it only gets the latest pdf-attachment
 
         attachment_model = self.env['ir.attachment']
         search_domain = list()
@@ -140,7 +147,8 @@ class AccountInvoice(models.Model):
             # Transmit method name
             transmit_method = record.transmit_method_id.name
 
-            _logger.debug("Sending '%s' as '%s'" % (record.invoice_number, transmit_method))
+            _logger.debug(_("Sending '%s' as '%s'") %
+                          (record.invoice_number, transmit_method))
 
             backend = record.get_apix_backend()
 
@@ -156,14 +164,22 @@ class AccountInvoice(models.Model):
             # tmp_file.write(payload)
             # tmp_file.close()
 
-            response = backend.SendInvoiceZIP(payload)
-            _logger.debug("Response for '%s': %s" % (record.invoice_number, response))
+            try:
+                response = backend.SendInvoiceZIP(payload)
+            except ValidationError as error:
+                message = '@%s error while sending invoice: %s' % \
+                          (record.user_id.login, error)
+                record.message_post(message)
+
+            _logger.debug(_("Response for '%s': %s") %
+                          (record.invoice_number, response))
 
             self.date_einvoice_sent = fields.Date.today()
             self.sent = True
 
             record.message_post(_('Invoice sent as "%s"') % transmit_method)
-            _logger.debug("Sent '%s' as '%s'" % (record.invoice_number, transmit_method))
+            _logger.debug(_("Sent '%s' as '%s'") %
+                          (record.invoice_number, transmit_method))
 
     @api.multi
     def validate_einvoice(self):

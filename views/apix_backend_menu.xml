@@ -8,7 +8,7 @@
         <field name="view_mode">tree,form</field>
     </record>
 
-    <menuitem id="menu_apix"
+    <menuitem id="menu_apix_root"
         parent="connector.menu_connector"
         name="APIX"
         sequence="10"
