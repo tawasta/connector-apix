@@ -81,7 +81,9 @@ class AccountInvoice(models.Model):
             search_domain.append(('tag_field', '=', 'correct_tag'))
         '''
 
-        attachment = attachment_model.search(search_domain, order='id DESC', limit=1)
+        attachment = attachment_model.search(
+            search_domain, order='id DESC', limit=1
+        )
 
         return attachment
 
@@ -125,14 +127,14 @@ class AccountInvoice(models.Model):
             # Write the XML-file to zip
             payload_zip.writestr(xml_name, self.finvoice_xml)
 
-            # Write the PDF-file to zip (the attachment iteration below should do this)
-            # payload_zip.writestr(pdf_name, pdf)
-
             # Iterate through all the attachments
             for attachment in attachments:
                 # Write the file to the cached zip
                 file_name = attachment.name or 'attachment';
-                payload_zip.writestr(file_name, base64.b64decode(attachment.datas))
+                payload_zip.writestr(
+                    file_name,
+                    base64.b64decode(attachment.datas)
+                )
 
         payload = in_memory_zip.getvalue()
 
@@ -193,9 +195,11 @@ class AccountInvoice(models.Model):
             msg = _("You can only send eInvoice if the invoice is open or paid")
 
         # VAT number is missing
-        elif self.transmit_method_code in ['einvoice'] and not self.partner_id.vat:
-            msg = _("Please set VAT number for the customer '%s' before sending an eInvoice.") \
-                  % self.partner_id.name
+        elif self.transmit_method_code in ['einvoice'] \
+                and not self.partner_id.vat:
+
+            msg = _("Please set VAT number for the customer "
+                    "'%s' before sending an eInvoice.") % self.partner_id.name
 
         # Wrong invoice transmit type
         elif self.transmit_method_code not in ['einvoice', 'printing_service']:

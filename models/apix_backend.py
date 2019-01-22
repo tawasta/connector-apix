@@ -42,7 +42,7 @@ class ApixBackend(models.Model):
     company_id = fields.Many2one(
         comodel_name='res.company',
         required=True,
-        default=lambda self: self.env['res.users'].browse([self._uid]).company_id,
+        default=lambda s: s.env['res.users'].browse([s._uid]).company_id,
         states=_FIELD_STATES,
     )
 
@@ -79,7 +79,8 @@ class ApixBackend(models.Model):
         states=_FIELD_STATES,
     )
 
-    # An optional prefix for business ids. Apix may assign this to virtual operators
+    # An optional prefix for business ids.
+    # Apix may assign this to virtual operators
     prefix = fields.Char(
         string='Prefix',
         states=_FIELD_STATES,
@@ -106,13 +107,15 @@ class ApixBackend(models.Model):
         copy=False,
     )
 
-    # The "business id". This can be plain business id or a business id with a prefix
+    # The "business id".
+    # This can be plain business id or a business id with a prefix
     business_id = fields.Char(
         string='Business ID',
         compute='compute_business_id',
     )
 
-    # Qualifier for the identification; y-tunnus, orgnr etc. (usually 'y-tunnus')
+    # Qualifier for the identification; y-tunnus, orgnr etc.
+    # Usually business id (y-tunnus)
     id_qualifier = fields.Char(
         string='ID Qualifier',
         selection=[('y-tunnus', 'Business ID')],
@@ -200,8 +203,8 @@ class ApixBackend(models.Model):
 
     def get_url(self, command, variables={}):
         # Returns the REST URL based on the environment, command and variables
-        # Please note that variables should always be in OrderedDict, as APIX API
-        # expects the variables in a certain order
+        # Please note that variables should always be in OrderedDict,
+        # as APIX API expects the variables in a certain order
 
         if self.environment == 'production':
             url = "https://api.apix.fi/"
@@ -224,9 +227,15 @@ class ApixBackend(models.Model):
         root = ET.fromstring(html)
 
         # Get response status
-        res_status = " ".join([status.text for status in root.findall('Status')])
-        res_status_code = " ".join([status.text for status in root.findall('StatusCode')])
-        res_free_text = " ".join([status.text for status in root.findall('FreeText')])
+        res_status = " ".join(
+            [status.text for status in root.findall('Status')]
+        )
+        res_status_code = " ".join(
+            [status.text for status in root.findall('StatusCode')]
+        )
+        res_free_text = " ".join(
+            [status.text for status in root.findall('FreeText')]
+        )
 
         msg = "%s [%s]: %s" % (res_status, res_status_code, res_free_text)
 
