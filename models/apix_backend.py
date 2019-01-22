@@ -346,42 +346,38 @@ class ApixBackend(models.Model):
         # Post the file to the server
         res = requests.put(url, data=payload)
 
-        self.validateResponse(res)
+        utf8_parser = ET.XMLParser(encoding='utf-8')
+        res_etree = ET.fromstring(res.text.encode('utf-8'), parser=utf8_parser)
 
-        return True
+        self.validateResponse(res_etree)
+
+        return res_etree
 
     def validateResponse(self, response):
-        try:
-            values = xmltodict.parse(response.text)
-        except:
+        logger.debug('Response: %s' % ET.tostring(response))
+
+        response_status = response.find('.//Status')
+
+        if response_status is None:
             raise ValidationError(
-                _('Parse error while handling response from APIX API')
+                _('Invalid response: response status not found')
             )
 
-        try:
-            response = values['Response']
-        except KeyError:
-            raise ValidationError(
-                _('Invalid response: response not found')
-            )
+        logger.debug("Response status: '%s'" % response_status.text)
 
-        try:
-            response_status = response['Status']
-        except KeyError:
-            raise ValidationError(
-                _('Invalid response: status not found')
-            )
-
-        logger.debug('Response status: %s' % response_status)
-
-        if response_status == 'ERR':
+        if response_status.text == 'ERR':
             try:
-                error = dict(response['FreeText'][1])['#text']
+                error = response.find(".//Value[@type='ValidateText']").text
             except:
-                error = 'Unknown'
+                error = _('Unknown error')
+
+            try:
+                statuscode = response.find('.//StatusCode').text
+            except:
+                statuscode = _('Unknown status code')
 
             msg = 'API Error (%s): %s' % \
-                  (response.get('StatusCode', 'Unknown'), error)
+                  (statuscode , error)
 
             # Replace the support address shown in the message
             if self.support_email:
@@ -389,12 +385,6 @@ class ApixBackend(models.Model):
 
             raise ValidationError(msg)
 
-        if response_status == 'OK':
-            try:
-                content = response['Content']['Group'][0]['Value']
-                logger.debug(content)
-
-            except:
-                msg = _('Error while trying to parse response')
-                raise ValidationError(msg)
-                logger.warning(msg)
+        elif response_status == 'OK':
+            # Response is OK, no actions
+            return

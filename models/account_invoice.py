@@ -21,6 +21,12 @@ class AccountInvoice(models.Model):
         copy=False
     )
 
+    apix_bind_ids = fields.One2many(
+        comodel_name='apix.account.invoice',
+        inverse_name='odoo_id',
+        string='APIX Bindings',
+    )
+
     @api.multi
     def action_einvoice_send(self):
         for record in self:
@@ -161,9 +167,9 @@ class AccountInvoice(models.Model):
             payload = record.get_apix_payload()
 
             # TODO: remove this
-            tmp_file = open('/tmp/apix_test_%s.zip' % record.invoice_number, 'w')
-            tmp_file.write(payload)
-            tmp_file.close()
+            # tmp_file = open('/tmp/apix_test_%s.zip' % record.invoice_number, 'w')
+            # tmp_file.write(payload)
+            # tmp_file.close()
 
             error = False
             try:
@@ -176,6 +182,37 @@ class AccountInvoice(models.Model):
 
             record.date_einvoice_sent = fields.Date.today()
             record.sent = True
+
+            apix_batch_id = response.find(".//Value[@type='BatchID']")
+            if apix_batch_id is not None:
+                apix_batch_id = apix_batch_id.text
+
+            apix_accepted_document_id = response.find(
+                ".//Value[@type='AcceptedDocumentID']")
+
+            if apix_accepted_document_id is not None:
+                apix_accepted_document_id = apix_accepted_document_id.text
+
+            apix_cost_in_credits = response.find(
+                ".//Value[@type='CostInCredits']")
+
+            if apix_cost_in_credits is not None:
+                apix_cost_in_credits = apix_cost_in_credits.text
+
+            response.find(".//Value[@type='BatchID']").text
+
+            binding_values = dict(
+                backend_id=backend.id,
+                odoo_id=record.id,
+                apix_batch_id=apix_batch_id,
+                apix_accepted_document_id=apix_accepted_document_id,
+                apix_cost_in_credits=apix_cost_in_credits,
+            )
+
+            # Create a binding
+            binding = self.sudo().env['apix.account.invoice'].create(
+                binding_values
+            )
 
             record.message_post(_('Invoice sent as "%s"') % transmit_method)
             _logger.debug(_("Sent '%s' as '%s'") %

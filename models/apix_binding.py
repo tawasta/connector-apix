@@ -9,12 +9,22 @@ class ApixBinding(models.AbstractModel):
 
     backend_id = fields.Many2one(
         comodel_name='apix.backend',
-        string='Coffee Backend',
+        string='APIX Backend',
         required=True,
         ondelete='restrict',
     )
 
-    accepted_document_id = fields.Integer(
-        string='Accepted document id',
+    apix_batch_id = fields.Char(
+        string='APIX Batch ID',
         index=True,
+    )
+
+    apix_accepted_document_id = fields.Integer(
+        string='APIX ID',
+        help='AcceptedDocumentID of this record in APIX',
+        index=True,
+    )
+
+    apix_cost_in_credits = fields.Float(
+        string='Cost in credits'
     )
