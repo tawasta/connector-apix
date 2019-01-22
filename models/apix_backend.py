@@ -8,7 +8,7 @@ import xmltodict
 from lxml import etree as ET
 from collections import OrderedDict
 
-from odoo import api, fields, models, _
+from odoo import fields, models, _
 from odoo.exceptions import Warning, ValidationError
 logger = logging.getLogger(__name__)
 
@@ -147,6 +147,21 @@ class ApixBackend(models.Model):
     # OwnerId
     owner_id = fields.Char(
         string='Owner ID'
+    )
+
+    # Odoo-settings
+    support_email = fields.Char(
+        string='Support email',
+        help='Replaces "servicedesk@apix.fi" with this address, if set',
+    )
+
+    invoice_template_id = fields.Many2one(
+        comodel_name='ir.actions.report.xml',
+        domain=[('model', '=', 'account.invoice')],
+        string='Invoice template',
+        help='Report template used when sending invoices via APIX',
+        required=True,
+        default=lambda s: s.env.ref('account.account_invoices'),
     )
 
     def compute_business_id(self):
@@ -367,6 +382,10 @@ class ApixBackend(models.Model):
 
             msg = 'API Error (%s): %s' % \
                   (response.get('StatusCode', 'Unknown'), error)
+
+            # Replace the support address shown in the message
+            if self.support_email:
+                msg = msg.replace('servicedesk@apix.fi', self.support_email)
 
             raise ValidationError(msg)
 

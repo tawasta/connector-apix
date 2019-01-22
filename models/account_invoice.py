@@ -26,12 +26,12 @@ class AccountInvoice(models.Model):
         for record in self:
             record.validate_einvoice()
 
-            # Set einvoice as sent
-            # NOTE! This expects the job to succeed
-            record.date_einvoice_sent = fields.Date.today()
-
             # Add sending to queue
-            record.with_delay().einvoice_send()
+            # job_desc = _("APIX send invoice '%s'") % record.number
+            # record.with_delay(description=job_desc).einvoice_send()
+
+            # Send eInvoice now
+            record.einvoice_send()
 
     def _get_finvoice_object(self):
         finvoice_object = super(AccountInvoice, self)._get_finvoice_object()
@@ -108,12 +108,11 @@ class AccountInvoice(models.Model):
 
         file_name = 'finvoice_%s' % self.invoice_number
         xml_name = '%s.xml' % file_name
-        pdf_name = '%s.pdf' % file_name
 
-        # Get the PDF
-        # TODO: configurable invoice template
-        report_name = 'account.report_invoice'
-        pdf = self.env['report'].get_pdf(self.ids, report_name)
+        # Generate PDF
+        backend = self.get_apix_backend()
+        report_name = backend.invoice_template_id.report_name
+        self.env['report'].get_pdf(self.ids, report_name)
 
         # Get attachments
         attachments = self.env['ir.attachment'].search([
@@ -162,22 +161,21 @@ class AccountInvoice(models.Model):
             payload = record.get_apix_payload()
 
             # TODO: remove this
-            # tmp_file = open('/tmp/apix_test_%s.zip' % self.invoice_number, 'w')
-            # tmp_file.write(payload)
-            # tmp_file.close()
+            tmp_file = open('/tmp/apix_test_%s.zip' % record.invoice_number, 'w')
+            tmp_file.write(payload)
+            tmp_file.close()
 
+            error = False
             try:
                 response = backend.SendInvoiceZIP(payload)
             except ValidationError as error:
-                message = '@%s error while sending invoice: %s' % \
-                          (record.user_id.login, error)
-                record.message_post(message)
+                raise error
 
             _logger.debug(_("Response for '%s': %s") %
                           (record.invoice_number, response))
 
-            self.date_einvoice_sent = fields.Date.today()
-            self.sent = True
+            record.date_einvoice_sent = fields.Date.today()
+            record.sent = True
 
             record.message_post(_('Invoice sent as "%s"') % transmit_method)
             _logger.debug(_("Sent '%s' as '%s'") %
@@ -194,12 +192,20 @@ class AccountInvoice(models.Model):
         if self.state not in ['open', 'paid']:
             msg = _("You can only send eInvoice if the invoice is open or paid")
 
-        # VAT number is missing
-        elif self.transmit_method_code in ['einvoice'] \
-                and not self.partner_id.vat:
-
-            msg = _("Please set VAT number for the customer "
-                    "'%s' before sending an eInvoice.") % self.partner_id.name
+        # Check these only for eInvoice
+        elif self.transmit_method_code in ['einvoice']:
+            # VAT number is missing
+            if not self.partner_id.vat:
+                msg = _("Please set VAT number for the customer '%s' before "
+                        "sending an eInvoice.") % self.partner_id.name
+            # Edicode is missing
+            elif not self.partner_id.edicode:
+                msg = _("Please set edicode for the customer '%s' "
+                        "before sending an eInvoice.") % self.partner_id.name
+            # Operator is missing
+            elif not self.partner_id.einvoice_operator:
+                msg = _("Please set eInvoice operator for the customer '%s' "
+                        "before sending an eInvoice.") % self.partner_id.name
 
         # Wrong invoice transmit type
         elif self.transmit_method_code not in ['einvoice', 'printing_service']:

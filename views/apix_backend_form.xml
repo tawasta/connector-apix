@@ -29,6 +29,11 @@
                     <h1>
                         <field name="name" class="oe_inline"/>
                     </h1>
+                    <group name="odoo_configuration" string="Odoo Configuration" group="base.group_erp_manager">
+                        <field name="support_email" />
+                        <field name="invoice_template_id" />
+                    </group>
+
                     <group name="apix_configuration" string="Apix Configuration">
                         <notebook>
                             <page name="api" string="API">
