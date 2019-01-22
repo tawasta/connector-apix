@@ -2,7 +2,7 @@
 <odoo>
 
     <record id="action_apix_backend" model="ir.actions.act_window">
-        <field name="name">Apix Backends</field>
+        <field name="name">APIX Backends</field>
         <field name="res_model">apix.backend</field>
         <field name="view_type">form</field>
         <field name="view_mode">tree,form</field>
@@ -16,7 +16,7 @@
 
     <menuitem id="menu_apix_backend"
         name="Backends"
-        parent="menu_apix"
+        parent="connector_apix.menu_apix_root"
         action="action_apix_backend"/>
 
 </odoo>
