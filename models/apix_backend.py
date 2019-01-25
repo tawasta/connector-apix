@@ -3,7 +3,6 @@ import hashlib
 import logging
 import datetime
 import requests
-import xmltodict
 
 from lxml import etree as ET
 from collections import OrderedDict
@@ -14,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class ApixBackend(models.Model):
+    # region Private attributes
     _name = 'apix.backend'
     _description = 'APIX Backend'
     _inherit = 'connector.backend'
@@ -27,7 +27,9 @@ class ApixBackend(models.Model):
         'confirmed': [('readonly', True)],
         'unconfirmed': [('readonly', False)],
     }
+    # endregion
 
+    # region Fields declaration
     # Backends start as unconfirmed
     state = fields.Selection(
         string='State',
@@ -163,6 +165,7 @@ class ApixBackend(models.Model):
         required=True,
         default=lambda s: s.env.ref('account.account_invoices'),
     )
+    # endregion
 
     def compute_business_id(self):
         for record in self:
@@ -170,6 +173,7 @@ class ApixBackend(models.Model):
             business_id = prefix + record.company_id.company_registry
             record.business_id = business_id
 
+    # region Action methods
     def action_authenticate(self):
         # A helper method for testing the authentication
         for record in self:
@@ -186,6 +190,15 @@ class ApixBackend(models.Model):
             record.transfer_key = False
             record.company_uuid = False
             record.state = 'unconfirmed'
+
+    def action_einvoice_fetch(self):
+        for record in self:
+            # Fetch einvoices
+            invoices = record.ListInvoiceZIPs()
+
+            print invoices.text
+
+    # endregion
 
     def get_digest(self, values):
         # Returns the digest needed for requests
@@ -233,6 +246,8 @@ class ApixBackend(models.Model):
 
         if variables:
             url = url.rstrip('&')  # Strip the last &
+
+        logger.debug('Using url %s' % url)
 
         return url
 
@@ -323,9 +338,7 @@ class ApixBackend(models.Model):
             self.contact_email = response.get('Email', False)
             self.owner_id = response.get('OwnerId', False)
 
-    def SendInvoiceZIP(self, payload):
-        logger.debug("APIX SendInvoiceZIP")
-
+    def get_default_url_attributes(self):
         values = OrderedDict()
 
         values['soft'] = "Standard"
@@ -340,6 +353,14 @@ class ApixBackend(models.Model):
         # Remove TransferKey. We don't want it to the url
         del values['TraKey']
 
+        logger.debug('Using values %s' % values)
+
+        return values
+
+    def SendInvoiceZIP(self, payload):
+        logger.debug("APIX SendInvoiceZIP")
+        values = self.get_default_url_attributes()
+
         command = 'invoices'
         url = self.get_url(command, values)
 
@@ -352,6 +373,19 @@ class ApixBackend(models.Model):
         self.validateResponse(res_etree)
 
         return res_etree
+
+    def ListInvoiceZIPs(self):
+        logger.debug("APIX ListInvoiceZIPs")
+
+        values = self.get_default_url_attributes()
+
+        command = 'list'
+        url = self.get_url(command, values)
+
+        # Get invoices from sever
+        res = requests.get(url)
+
+        return res
 
     def validateResponse(self, response):
         logger.debug('Response: %s' % ET.tostring(response))

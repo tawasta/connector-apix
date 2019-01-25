@@ -21,6 +21,12 @@
                             attrs="{'invisible': [('state', '=', 'unconfirmed')]}"
                     />
 
+                    <button name="action_einvoice_fetch"
+                            type="object"
+                            class="oe_highlight"
+                            string="Fetch invoices"
+                    />
+
                     <field name="state" widget="statusbar" />
                 </header>
 
