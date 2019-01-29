@@ -7,8 +7,9 @@ import requests
 from lxml import etree as ET
 from collections import OrderedDict
 
-from odoo import fields, models, _
+from odoo import api, fields, models, _
 from odoo.exceptions import Warning, ValidationError
+from odoo.addons.queue_job.job import job
 logger = logging.getLogger(__name__)
 
 
@@ -193,10 +194,36 @@ class ApixBackend(models.Model):
 
     def action_einvoice_fetch(self):
         for record in self:
-            # Fetch einvoices
-            invoices = record.ListInvoiceZIPs()
+            # Add sending to queue
+            job_desc = _("APIX list invoices for '%s'") % record.name
+            record.with_delay(description=job_desc).list_invoices(refetch=True)
 
-            print invoices.text
+    @api.multi
+    @job
+    def list_invoices(self, refetch=False):
+        self.ensure_one()
+
+        # Fetch einvoices
+        invoices = self.ListInvoiceZIPs()
+
+        for invoice in invoices.findall('.//Group'):
+            storage_id = invoice.find(".//Value[@type='StorageID']")
+            storage_status = invoice.find(".//Value[@type='StorageStatus']")
+
+            if storage_status.text == 'UNRECEIVED' or refetch:
+                job_desc = _("APIX import invoice '%s'") % storage_id
+                self.with_delay(description=job_desc)\
+                    .download_invoice(storage_id.text)
+
+    @api.multi
+    @job
+    def download_invoice(self, storage_id):
+        self.ensure_one()
+
+        # Download invoice
+        invoice = self.Download(storage_id)
+
+        print invoice
 
     # endregion
 
@@ -234,10 +261,18 @@ class ApixBackend(models.Model):
         # Please note that variables should always be in OrderedDict,
         # as APIX API expects the variables in a certain order
 
+        terminal_commands = ['list', 'receive', 'download', 'metadata']
+
         if self.environment == 'production':
-            url = "https://api.apix.fi/"
+            if command in terminal_commands:
+                url = "https://terminal.apix.fi/"
+            else:
+                url = "https://api.apix.fi/"
         else:
-            url = "https://test-api.apix.fi/"
+            if command in terminal_commands:
+                url = "https://test-terminal.apix.fi/"
+            else:
+                url = "https://test-api.apix.fi/"
 
         url += "%s?" % command
 
@@ -338,11 +373,27 @@ class ApixBackend(models.Model):
             self.contact_email = response.get('Email', False)
             self.owner_id = response.get('OwnerId', False)
 
-    def get_default_url_attributes(self):
+    def get_default_url_attributes(
+            self,
+            show_soft=True,  # Software
+            show_ver=True,  # Software version
+            storage_id=False,  # StorageID
+            mark_received=False,  # Mark invoice as received
+    ):
         values = OrderedDict()
 
-        values['soft'] = "Standard"
-        values['ver'] = "1.0"
+        if show_soft:
+            values['soft'] = "Standard"
+
+        if show_ver:
+            values['ver'] = "1.0"
+
+        if mark_received:
+            values['markReceived'] = 'yes'
+
+        if storage_id:
+            values['SID'] = storage_id
+
         values['TraID'] = self.transfer_id
         values['t'] = self.get_timestamp()
         values['TraKey'] = self.transfer_key
@@ -377,7 +428,9 @@ class ApixBackend(models.Model):
     def ListInvoiceZIPs(self):
         logger.debug("APIX ListInvoiceZIPs")
 
-        values = self.get_default_url_attributes()
+        values = self.get_default_url_attributes(
+            show_soft=False, show_ver=False
+        )
 
         command = 'list'
         url = self.get_url(command, values)
@@ -385,7 +438,28 @@ class ApixBackend(models.Model):
         # Get invoices from sever
         res = requests.get(url)
 
-        return res
+        utf8_parser = ET.XMLParser(encoding='utf-8')
+        res_etree = ET.fromstring(res.text.encode('utf-8'), parser=utf8_parser)
+
+        return res_etree
+
+    def Download(self, storage_id):
+        logger.debug("APIX Download")
+        values = self.get_default_url_attributes(
+            show_soft=False,
+            show_ver=False,
+            mark_received=True,
+            storage_id=storage_id,
+        )
+
+        command = 'download'
+        url = self.get_url(command, values)
+
+        # Download invoice from sever
+        res = requests.get(url)
+
+        print res
+        print res.text
 
     def validateResponse(self, response):
         logger.debug('Response: %s' % ET.tostring(response))
