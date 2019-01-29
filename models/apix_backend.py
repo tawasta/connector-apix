@@ -207,21 +207,25 @@ class ApixBackend(models.Model):
         invoices = self.ListInvoiceZIPs()
 
         for invoice in invoices.findall('.//Group'):
-            storage_id = invoice.find(".//Value[@type='StorageID']")
-            storage_status = invoice.find(".//Value[@type='StorageStatus']")
+            storage_id = \
+                invoice.find(".//Value[@type='StorageID']").text
+            storage_key = \
+                invoice.find(".//Value[@type='StorageKey']").text
+            storage_status = \
+                invoice.find(".//Value[@type='StorageStatus']").text
 
-            if storage_status.text == 'UNRECEIVED' or refetch:
+            if storage_status == 'UNRECEIVED' or refetch:
                 job_desc = _("APIX import invoice '%s'") % storage_id
                 self.with_delay(description=job_desc)\
-                    .download_invoice(storage_id.text)
+                    .download_invoice(storage_id, storage_key)
 
     @api.multi
     @job
-    def download_invoice(self, storage_id):
+    def download_invoice(self, storage_id, storage_key):
         self.ensure_one()
 
         # Download invoice
-        invoice = self.Download(storage_id)
+        invoice = self.Download(storage_id, storage_key)
 
         print invoice
 
@@ -261,7 +265,7 @@ class ApixBackend(models.Model):
         # Please note that variables should always be in OrderedDict,
         # as APIX API expects the variables in a certain order
 
-        terminal_commands = ['list', 'receive', 'download', 'metadata']
+        terminal_commands = ['list', 'list2', 'receive', 'download', 'metadata']
 
         if self.environment == 'production':
             if command in terminal_commands:
@@ -378,6 +382,7 @@ class ApixBackend(models.Model):
             show_soft=True,  # Software
             show_ver=True,  # Software version
             storage_id=False,  # StorageID
+            storage_key=False,  # StorageKey
             mark_received=False,  # Mark invoice as received
     ):
         values = OrderedDict()
@@ -396,13 +401,18 @@ class ApixBackend(models.Model):
 
         values['TraID'] = self.transfer_id
         values['t'] = self.get_timestamp()
-        values['TraKey'] = self.transfer_key
+
+        if storage_key:
+            values['StorageKey'] = storage_key
+        else:
+            values['TraKey'] = self.transfer_key
 
         # Get the digest hash
         values['d'] = self.get_digest(values)
 
-        # Remove TransferKey. We don't want it to the url
-        del values['TraKey']
+        # Remove TransferKey and StorageKey. We don't want them to the url
+        values.pop("TraKey", None)
+        values.pop("StorageKey", None)
 
         logger.debug('Using values %s' % values)
 
@@ -432,7 +442,7 @@ class ApixBackend(models.Model):
             show_soft=False, show_ver=False
         )
 
-        command = 'list'
+        command = 'list2'
         url = self.get_url(command, values)
 
         # Get invoices from sever
@@ -443,13 +453,14 @@ class ApixBackend(models.Model):
 
         return res_etree
 
-    def Download(self, storage_id):
+    def Download(self, storage_id, storage_key):
         logger.debug("APIX Download")
         values = self.get_default_url_attributes(
             show_soft=False,
             show_ver=False,
             mark_received=True,
             storage_id=storage_id,
+            storage_key=storage_key,
         )
 
         command = 'download'
@@ -459,7 +470,7 @@ class ApixBackend(models.Model):
         res = requests.get(url)
 
         print res
-        print res.text
+        print res.content
 
     def validateResponse(self, response):
         logger.debug('Response: %s' % ET.tostring(response))
