@@ -240,6 +240,7 @@ class ApixBackend(models.Model):
 
         # Strip the last "+"
         digest_src = digest_src[:-1]
+        logger.debug('Calculating digest from %s' % digest_src)
         digest = 'SHA-256:' + hashlib.sha256(digest_src).hexdigest()
 
         return digest
@@ -396,10 +397,12 @@ class ApixBackend(models.Model):
         if mark_received:
             values['markReceived'] = 'yes'
 
+        # Use SID OR TraID, never both
         if storage_id:
             values['SID'] = storage_id
+        else:
+            values['TraID'] = self.transfer_id
 
-        values['TraID'] = self.transfer_id
         values['t'] = self.get_timestamp()
 
         if storage_key:
@@ -427,6 +430,7 @@ class ApixBackend(models.Model):
 
         # Post the file to the server
         res = requests.put(url, data=payload)
+        res.raise_for_status()
 
         utf8_parser = ET.XMLParser(encoding='utf-8')
         res_etree = ET.fromstring(res.text.encode('utf-8'), parser=utf8_parser)
@@ -447,6 +451,7 @@ class ApixBackend(models.Model):
 
         # Get invoices from sever
         res = requests.get(url)
+        res.raise_for_status()
 
         utf8_parser = ET.XMLParser(encoding='utf-8')
         res_etree = ET.fromstring(res.text.encode('utf-8'), parser=utf8_parser)
@@ -458,7 +463,7 @@ class ApixBackend(models.Model):
         values = self.get_default_url_attributes(
             show_soft=False,
             show_ver=False,
-            mark_received=True,
+            mark_received=False,
             storage_id=storage_id,
             storage_key=storage_key,
         )
@@ -468,9 +473,13 @@ class ApixBackend(models.Model):
 
         # Download invoice from sever
         res = requests.get(url)
+        res.raise_for_status()
 
-        print res
-        print res.content
+        tmp_file = open('/tmp/apix_test.zip', 'w')
+        tmp_file.write(res.content)
+        tmp_file.close()
+
+        print res.text
 
     def validateResponse(self, response):
         logger.debug('Response: %s' % ET.tostring(response))
