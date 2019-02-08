@@ -1,17 +1,45 @@
 # -*- coding: utf-8 -*-
 import logging
-import zipfile
-import cStringIO
-import base64
 
-from odoo import fields, models, api
+from odoo import models, api
 from odoo import _
 from odoo.addons.queue_job.job import job
-from odoo.exceptions import ValidationError
+from odoo.exceptions import UserError
+
 
 _logger = logging.getLogger(__name__)
 
 
-class AccountInvoice(models.Model):
-    _inherit = 'account.invoice'
+class ApixAccountInvoice(models.Model):
+    _inherit = 'apix.account.invoice'
 
+    @api.multi
+    @job
+    def import_finvoice(self, finvoice, attachments):
+        if not finvoice:
+            raise UserError(_('Finvoice is mandatory information'))
+
+        AccountInvoiceImport = self.env['account.invoice.import']
+
+        ctx = dict(
+            force_company=finvoice.company_id.id,
+        )
+
+        values = dict(
+            invoice_file=finvoice.datas,
+            invoice_filename=finvoice.name,
+            # TODO: support for using using partner-spesific settings
+            import_config_id=self.env.ref('connector_apix.apix_default').id
+        )
+
+        # Launch the import wizard programmatically
+        importer_wizard = AccountInvoiceImport.with_context(ctx).create(values)
+
+        res = importer_wizard.import_invoice()
+        res_id = res.get('res_id')
+
+        for attachment in attachments:
+            attachment.res_id = res_id
+
+        # Importer creates a new Finvoice XML attachment. Remove the original
+        finvoice.unlink()

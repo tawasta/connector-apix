@@ -18,7 +18,7 @@ Usage
 
 Known issues / Roadmap
 ======================
-\-
+- markReceived is not working: we are re-fetching all invoices
 
 Credits
 =======

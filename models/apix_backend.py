@@ -1,11 +1,16 @@
 # -*- coding: utf-8 -*-
+import base64
 import hashlib
 import logging
 import datetime
 import requests
 
-from lxml import etree as ET
 from collections import OrderedDict
+from cStringIO import StringIO
+from lxml import etree as ET
+from mimetypes import MimeTypes
+from zipfile import ZipFile
+
 
 from odoo import api, fields, models, _
 from odoo.exceptions import Warning, ValidationError
@@ -192,10 +197,20 @@ class ApixBackend(models.Model):
             record.company_uuid = False
             record.state = 'unconfirmed'
 
+    def action_cron_einvoice_fetch(self):
+        for backend in self.search([]):
+            backend.action_einvoice_fetch()
+
     def action_einvoice_fetch(self):
         for record in self:
-            # Add sending to queue
-            job_desc = _("APIX list invoices for '%s'") % record.name
+            # Add fetching to queue
+            job_desc = _("APIX fetch invoices for '%s'") % record.name
+            record.with_delay(description=job_desc).list_invoices(refetch=False)
+
+    def action_einvoice_refetch(self):
+        for record in self:
+            # Add fetching to queue
+            job_desc = _("APIX refetch invoices for '%s'") % record.name
             record.with_delay(description=job_desc).list_invoices(refetch=True)
 
     @api.multi
@@ -206,6 +221,8 @@ class ApixBackend(models.Model):
         # Fetch einvoices
         invoices = self.ListInvoiceZIPs()
 
+        logger.debug(
+            'Invoice XML: %s' % ET.tostring(invoices, pretty_print=True))
         for invoice in invoices.findall('.//Group'):
             storage_id = \
                 invoice.find(".//Value[@type='StorageID']").text
@@ -225,9 +242,7 @@ class ApixBackend(models.Model):
         self.ensure_one()
 
         # Download invoice
-        invoice = self.Download(storage_id, storage_key)
-
-        print invoice
+        self.Download(storage_id, storage_key)
 
     # endregion
 
@@ -475,11 +490,32 @@ class ApixBackend(models.Model):
         res = requests.get(url)
         res.raise_for_status()
 
-        tmp_file = open('/tmp/apix_test.zip', 'w')
-        tmp_file.write(res.content)
-        tmp_file.close()
+        zip_file = ZipFile(StringIO(res.content))
+        mime = MimeTypes()
 
-        print res.text
+        Attachment = self.env['ir.attachment']
+
+        finvoice=False
+        attachment_ids = list()
+        for file_name in zip_file.namelist():
+            # Save to attachments without res_id
+            values = dict(
+                name=file_name,
+                datas_fname=file_name,
+                type='binary',
+                datas=base64.b64encode(zip_file.read(file_name)),
+                res_model='account.invoice',
+                mimetype=mime.guess_type(file_name),
+            )
+
+            attachment_id = Attachment.create(values)
+            if file_name == 'invoice.xml':
+                finvoice = attachment_id
+            else:
+                attachment_ids.append(attachment_id)
+
+        self.env['apix.account.invoice'].import_finvoice(
+            finvoice, attachment_ids);
 
     def validateResponse(self, response):
         logger.debug('Response: %s' % ET.tostring(response))

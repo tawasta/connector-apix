@@ -27,6 +27,12 @@
                             string="Fetch invoices"
                     />
 
+                    <button name="action_einvoice_refetch"
+                            type="object"
+                            class="oe_highlight"
+                            string="Refetch invoices"
+                    />
+
                     <field name="state" widget="statusbar" />
                 </header>
 

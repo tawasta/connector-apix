@@ -22,7 +22,7 @@
 {
     'name': 'APIX Connector',
     'summary': 'APIX EDI connector for receiving and sending eInvoices',
-    'version': '10.0.0.9.0',
+    'version': '10.0.0.10.0',
     'category': 'Connector',
     'website': 'http://www.tawasta.fi',
     'author': 'Oy Tawasta Technologies Ltd.',
@@ -30,15 +30,26 @@
     'application': False,
     'installable': True,
     'external_dependencies': {
-        'python': [],
+        'python': [
+            'collections',
+            'cStringIO',
+            'mimetypes',
+            'lxml',
+            'requests',
+            'zipfile',
+        ],
         'bin': [],
     },
     'depends': [
+        'account_invoice_import',
+        'account_invoice_import_finvoice',
         'account_invoice_transmit_method',
         'connector',
         'l10n_fi_finvoice',
     ],
     'data': [
+        'data/account_invoice_import_config.xml',
+        'data/ir_cron.xml',
         'data/transmit_method.xml',
 
         'views/account_invoice_form.xml',
