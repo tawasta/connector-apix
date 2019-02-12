@@ -105,7 +105,8 @@ class AccountInvoice(models.Model):
         with zipfile.ZipFile(in_memory_zip, 'w') as payload_zip:
 
             # Write the XML-file to zip
-            payload_zip.writestr(xml_name, self.finvoice_xml)
+            payload_zip.writestr(
+                xml_name, self.finvoice_xml.encode('ISO-8859-15'))
 
             # Iterate through all the attachments
             for attachment in attachments:
