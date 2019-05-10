@@ -6,11 +6,22 @@
 APIX Connector
 ==============
 
-APIX EDI connector for receiving and sending eInvoices.
+APIX EDI connector for receiving and sending eInvoices via APIX
+
+Features
+========
+- Setup APIX account
+- Use any invoice template for outgoing invoices
+- Send sale invoices (as einvoice or via printing service)
+- Send sale credit notes (refunds)
+- Receive purchase invoices
+- Receive purchase credit notes (refunds)
+
 
 Configuration
 =============
-\-
+- Set up a connector backend from Connectors->APIX->Backends
+- Start sending/receiving invoices
 
 Usage
 =====
@@ -18,6 +29,8 @@ Usage
 
 Known issues / Roadmap
 ======================
+- Sending attachments is not supported
+- Receiving attachments is not supported
 - markReceived is not working: we are re-fetching all invoices
 
 Credits
