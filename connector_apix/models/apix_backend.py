@@ -216,6 +216,14 @@ class ApixBackend(models.Model):
     @api.multi
     @job
     def list_invoices(self, refetch=False):
+        """
+        Fetch list of invoices from APIX
+        This will always fetch everything as there is no filter options.
+        Filtering should be added when it will become available
+
+        :param refetch: Re-fetch already downloaded invoices
+        :return:
+        """
         self.ensure_one()
 
         # Fetch einvoices
@@ -231,7 +239,8 @@ class ApixBackend(models.Model):
             storage_status = \
                 invoice.find(".//Value[@type='StorageStatus']").text
 
-            if storage_status == 'UNRECEIVED' or refetch:
+            if storage_status == 'UNRECEIVED' \
+                    or refetch and storage_status == 'RECEIVED':
                 job_desc = _("APIX import invoice '%s'") % storage_id
                 self.with_delay(description=job_desc)\
                     .download_invoice(storage_id, storage_key)
