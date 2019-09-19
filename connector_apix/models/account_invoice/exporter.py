@@ -147,7 +147,6 @@ class AccountInvoice(models.Model):
             # tmp_file.write(payload)
             # tmp_file.close()
 
-            error = False
             try:
                 response = backend.SendInvoiceZIP(payload)
             except ValidationError as error:
@@ -186,7 +185,7 @@ class AccountInvoice(models.Model):
             )
 
             # Create a binding
-            binding = self.sudo().env['apix.account.invoice'].create(
+            self.sudo().env['apix.account.invoice'].create(
                 binding_values
             )
 

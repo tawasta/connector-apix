@@ -30,7 +30,6 @@ Usage
 Known issues / Roadmap
 ======================
 - Sending attachments is not supported
-- Receiving attachments is not supported
 - markReceived is not working: we are re-fetching all invoices
 
 Credits
