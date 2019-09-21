@@ -395,6 +395,10 @@ class ApixBackend(models.Model):
         url = self.get_url(command, values)
         response = self.get_values_from_url(url)
 
+        if type(response) == list:
+            # For some reason the res can also be a list with one dict in it (?)
+            response = response[0]
+
         if response:
             self.customer_id = response.get('IdCustomer', False)
             self.customer_number = response.get('CustomerNumber', False)
