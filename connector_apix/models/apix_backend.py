@@ -528,7 +528,7 @@ class ApixBackend(models.Model):
                 attachment_ids.append(attachment_id)
 
         self.env['apix.account.invoice'].import_finvoice(
-            finvoice, attachment_ids);
+            self, finvoice, attachment_ids);
 
     def validateResponse(self, response):
         logger.debug('Response: %s' % ET.tostring(response))

@@ -15,7 +15,7 @@ class ApixAccountInvoice(models.Model):
 
     @api.multi
     @job
-    def import_finvoice(self, finvoice, attachments):
+    def import_finvoice(self, backend, finvoice, attachments):
         if not finvoice:
             raise UserError(_('Finvoice is mandatory information'))
 
@@ -25,11 +25,14 @@ class ApixAccountInvoice(models.Model):
             force_company=finvoice.company_id.id,
         )
 
+        import_config_id = self.env['account.invoice.import.config'].search([
+            ('company_id', '=', backend.company_id.id),
+        ], limit=1)
+
         values = dict(
             invoice_file=finvoice.datas,
             invoice_filename=finvoice.name,
-            # TODO: support for using using partner-spesific settings
-            import_config_id=self.env.ref('connector_apix.apix_default').id
+            import_config_id=import_config_id.id
         )
 
         # Launch the import wizard programmatically
