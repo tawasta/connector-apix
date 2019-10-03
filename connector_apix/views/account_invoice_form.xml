@@ -61,7 +61,7 @@
     <record id="invoice_form" model="ir.ui.view">
         <field name="name">APIX EDI Invoice</field>
         <field name="model">account.invoice</field>
-        <field name="inherit_id" ref="accpimt.invoice_supplier_form"/>
+        <field name="inherit_id" ref="account.invoice_supplier_form"/>
         <field name="arch" type="xml">
             <xpath expr="//page[last()]" position="after">
                 <page name="apix_bindings" string="APIX" groups="base.group_erp_manager">
