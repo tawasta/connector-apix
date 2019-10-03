@@ -519,6 +519,7 @@ class ApixBackend(models.Model):
                 datas=base64.b64encode(zip_file.read(file_name)),
                 res_model='account.invoice',
                 mimetype=mime.guess_type(file_name),
+                company_id=self.company_id,
             )
 
             attachment_id = Attachment.create(values)
@@ -528,7 +529,7 @@ class ApixBackend(models.Model):
                 attachment_ids.append(attachment_id)
 
         self.env['apix.account.invoice'].import_finvoice(
-            self, finvoice, attachment_ids);
+            finvoice, attachment_ids);
 
     def validateResponse(self, response):
         logger.debug('Response: %s' % ET.tostring(response))

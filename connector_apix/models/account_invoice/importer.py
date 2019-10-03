@@ -15,7 +15,7 @@ class ApixAccountInvoice(models.Model):
 
     @api.multi
     @job
-    def import_finvoice(self, backend, finvoice, attachments):
+    def import_finvoice(self, finvoice, attachments):
         if not finvoice:
             raise UserError(_('Finvoice is mandatory information'))
 
@@ -26,7 +26,7 @@ class ApixAccountInvoice(models.Model):
         )
 
         import_config_id = self.env['account.invoice.import.config'].search([
-            ('company_id', '=', backend.company_id.id),
+            ('company_id', '=', finvoice.company_id.id),
         ], limit=1)
 
         values = dict(
