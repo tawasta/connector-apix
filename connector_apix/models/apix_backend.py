@@ -519,7 +519,7 @@ class ApixBackend(models.Model):
                 datas=base64.b64encode(zip_file.read(file_name)),
                 res_model='account.invoice',
                 mimetype=mime.guess_type(file_name),
-                company_id=self.company_id,
+                company_id=self.company_id.id,
             )
 
             attachment_id = Attachment.create(values)
