@@ -211,7 +211,8 @@ class ApixBackend(models.Model):
         for record in self:
             # Add fetching to queue
             job_desc = _("APIX refetch invoices for '%s'") % record.name
-            record.with_delay(description=job_desc).list_invoices(refetch=True)
+            record.with_context(company_id=record.company_id.id).with_delay(
+                description=job_desc).list_invoices(refetch=True)
 
     @api.multi
     @job
