@@ -12,7 +12,6 @@
 
             <!-- Add an eInvoice sending buttons -->
             <!-- Use ambiguous "button[1]" to support replacing or removing header buttons in other modules -->
-            <!-- TODO: add invoice transmit types -->
             <xpath expr="//button[1]" position="after">
 
                 <button name="action_einvoice_send"
@@ -41,7 +40,15 @@
                         ]}"
                 />
             </xpath>
+        </field>
+    </record>
 
+    <record id="invoice_form_admin" model="ir.ui.view">
+        <field name="name">APIX EDI Invoice Admin</field>
+        <field name="model">account.invoice</field>
+        <field name="groups_id" eval="[(4, ref('account.group_erp_manager'))]"/>
+        <field name="inherit_id" ref="account.invoice_form"/>
+        <field name="arch" type="xml">
             <xpath expr="//page[last()]" position="after">
                 <page name="apix_bindings" string="APIX" groups="base.group_erp_manager">
                     <field name="apix_bind_ids">
@@ -58,9 +65,10 @@
         </field>
     </record>
 
-    <record id="invoice_supplier_form" model="ir.ui.view">
-        <field name="name">APIX EDI Invoice</field>
+    <record id="invoice_supplier_form_admin" model="ir.ui.view">
+        <field name="name">APIX EDI Invoice Admin</field>
         <field name="model">account.invoice</field>
+        <field name="groups_id" eval="[(4, ref('account.group_erp_manager'))]"/>
         <field name="inherit_id" ref="account.invoice_supplier_form"/>
         <field name="arch" type="xml">
             <xpath expr="//page[last()]" position="after">
