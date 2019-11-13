@@ -50,7 +50,7 @@
         <field name="inherit_id" ref="account.invoice_form"/>
         <field name="arch" type="xml">
             <xpath expr="//page[last()]" position="after">
-                <page name="apix_bindings" string="APIX" groups="base.group_erp_manager">
+                <page name="apix_bindings" string="APIX" groups="base.group_system">
                     <field name="apix_bind_ids">
                         <tree create="false" delete="false">
                             <field name="backend_id" readonly="1"/>
@@ -68,7 +68,7 @@
     <record id="invoice_supplier_form_admin" model="ir.ui.view">
         <field name="name">APIX EDI Invoice Admin</field>
         <field name="model">account.invoice</field>
-        <field name="groups_id" eval="[(4, ref('account.group_erp_manager'))]"/>
+        <field name="groups_id" eval="[(4, ref('account.group_system'))]"/>
         <field name="inherit_id" ref="account.invoice_supplier_form"/>
         <field name="arch" type="xml">
             <xpath expr="//page[last()]" position="after">
