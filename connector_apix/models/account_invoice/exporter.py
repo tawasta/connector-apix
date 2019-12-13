@@ -93,7 +93,9 @@ class AccountInvoice(models.Model):
         # Generate PDF
         backend = self.get_apix_backend()
         report_name = backend.invoice_template_id.report_name
-        self.env['report'].get_pdf(self.ids, report_name)
+        self.env['report'].with_context(
+            type='binary',
+            default_type='binary').get_pdf(self.ids, report_name)
 
         # Get attachments
         attachments = self.env['ir.attachment'].search([
