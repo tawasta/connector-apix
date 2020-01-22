@@ -241,7 +241,7 @@ class ApixBackend(models.Model):
                 invoice.find(".//Value[@type='StorageStatus']").text
 
             document_id_element = invoice.find(".//Value[@type='DocumentID']")
-            if document_id_element:
+            if document_id_element is not None:
                 # Document id is better, if it's found
                 document_id = document_id_element.text
             else:
@@ -250,7 +250,7 @@ class ApixBackend(models.Model):
 
             # Try to get sender name
             sender_name_element = invoice.find(".//Value[@type='SenderName']")
-            if sender_name_element:
+            if sender_name_element is not None:
                 sender_name = sender_name_element.text
             else:
                 sender_name = 'Unknown'
