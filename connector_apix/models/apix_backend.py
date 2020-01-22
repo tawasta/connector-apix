@@ -233,16 +233,27 @@ class ApixBackend(models.Model):
         logger.debug(
             'Invoice XML: %s' % ET.tostring(invoices, pretty_print=True))
         for invoice in invoices.findall('.//Group'):
-            document_id = \
-                invoice.find(".//Value[@type='DocumentID']").text
-            sender_name = \
-                invoice.find(".//Value[@type='SenderName']").text
             storage_id = \
                 invoice.find(".//Value[@type='StorageID']").text
             storage_key = \
                 invoice.find(".//Value[@type='StorageKey']").text
             storage_status = \
                 invoice.find(".//Value[@type='StorageStatus']").text
+
+            document_id_element = invoice.find(".//Value[@type='DocumentID']")
+            if document_id_element:
+                # Document id is better, if it's found
+                document_id = document_id_element.text
+            else:
+                # Storage id is always found, but is less useful
+                document_id = storage_id
+
+            # Try to get sender name
+            sender_name_element = invoice.find(".//Value[@type='SenderName']")
+            if sender_name_element:
+                sender_name = sender_name_element.text
+            else:
+                sender_name = 'Unknown'
 
             if storage_status == 'UNRECEIVED' \
                     or refetch and storage_status == 'RECEIVED':
