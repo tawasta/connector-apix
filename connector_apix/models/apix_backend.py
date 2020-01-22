@@ -233,6 +233,10 @@ class ApixBackend(models.Model):
         logger.debug(
             'Invoice XML: %s' % ET.tostring(invoices, pretty_print=True))
         for invoice in invoices.findall('.//Group'):
+            document_id = \
+                invoice.find(".//Value[@type='DocumentID']").text
+            sender_name = \
+                invoice.find(".//Value[@type='SenderName']").text
             storage_id = \
                 invoice.find(".//Value[@type='StorageID']").text
             storage_key = \
@@ -242,7 +246,8 @@ class ApixBackend(models.Model):
 
             if storage_status == 'UNRECEIVED' \
                     or refetch and storage_status == 'RECEIVED':
-                job_desc = _("APIX import invoice '%s'") % storage_id
+                job_desc = _("APIX import invoice '%s' from %s") % \
+                           (document_id, sender_name)
                 self.with_delay(description=job_desc)\
                     .download_invoice(storage_id, storage_key)
 
@@ -478,7 +483,7 @@ class ApixBackend(models.Model):
         command = 'list2'
         url = self.get_url(command, values)
 
-        # Get invoices from sever
+        # Get invoices from server
         res = requests.get(url)
         res.raise_for_status()
 
@@ -500,7 +505,7 @@ class ApixBackend(models.Model):
         command = 'download'
         url = self.get_url(command, values)
 
-        # Download invoice from sever
+        # Download invoice from server
         res = requests.get(url)
         res.raise_for_status()
 
@@ -530,7 +535,7 @@ class ApixBackend(models.Model):
                 attachment_ids.append(attachment_id)
 
         self.env['apix.account.invoice'].import_finvoice(
-            finvoice, attachment_ids);
+            finvoice, attachment_ids)
 
     def validateResponse(self, response):
         logger.debug('Response: %s' % ET.tostring(response))
