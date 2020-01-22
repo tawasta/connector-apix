@@ -268,7 +268,9 @@ class ApixBackend(models.Model):
         self.ensure_one()
 
         # Download invoice
-        self.Download(storage_id, storage_key)
+        res = self.Download(storage_id, storage_key)
+
+        return _("Imported invoice %s") % res
 
     # endregion
 
@@ -545,8 +547,10 @@ class ApixBackend(models.Model):
             else:
                 attachment_ids.append(attachment_id)
 
-        self.env['apix.account.invoice'].import_finvoice(
+        res = self.env['apix.account.invoice'].import_finvoice(
             finvoice, attachment_ids)
+
+        return res
 
     def validateResponse(self, response):
         logger.debug('Response: %s' % ET.tostring(response))

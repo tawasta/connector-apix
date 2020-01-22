@@ -46,3 +46,5 @@ class ApixAccountInvoice(models.Model):
 
         # Importer creates a new Finvoice XML attachment. Remove the original
         finvoice.unlink()
+
+        return res_id
