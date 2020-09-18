@@ -37,7 +37,6 @@ class AccountInvoice(models.Model):
 
     date_einvoice_sent = fields.Date(
         string='eInvoice sent',
-        readonly=True,
         copy=False
     )
 
