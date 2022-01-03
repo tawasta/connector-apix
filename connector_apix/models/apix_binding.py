@@ -19,7 +19,7 @@ class ApixBinding(models.AbstractModel):
         index=True,
     )
 
-    apix_accepted_document_id = fields.Integer(
+    apix_accepted_document_id = fields.Char(
         string='APIX ID',
         help='AcceptedDocumentID of this record in APIX',
         index=True,
