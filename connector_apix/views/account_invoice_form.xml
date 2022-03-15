@@ -6,10 +6,14 @@
         <field name="inherit_id" ref="account_invoice_transmit_method.invoice_form"/>
         <field name="arch" type="xml">
 
+            <field name="date_invoice" position="before">
+                <field name="european_standard" />
+            </field>
+
             <field name="date_invoice" position="after">
                 <field name="date_einvoice_sent" attrs="{'invisible': [('date_einvoice_sent', '=', False)]}" readonly="1" />
             </field>
-
+            
             <!-- Add an eInvoice sending buttons -->
             <!-- Use ambiguous "button[1]" to support replacing or removing header buttons in other modules -->
             <xpath expr="//button[1]" position="after">

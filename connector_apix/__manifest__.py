@@ -22,7 +22,7 @@
 {
     'name': 'APIX Connector',
     'summary': 'APIX EDI connector for receiving and sending eInvoices',
-    'version': '10.0.0.11.24',
+    'version': '10.0.0.11.25',
     'category': 'Connector',
     'website': 'https://gitlab.com/tawasta/odoo/connector-apix',
     'author': 'Oy Tawasta Technologies Ltd.',

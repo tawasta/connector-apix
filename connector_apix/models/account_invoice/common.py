@@ -40,6 +40,13 @@ class AccountInvoice(models.Model):
         copy=False
     )
 
+    # TODO: remove this, it belongs to Finvoice-module
+    european_standard = fields.Boolean(
+        string="European standard",
+        help="Use European eInvoice standard (EN16931)",
+        default=False,
+    )
+
     apix_bind_ids = fields.One2many(
         comodel_name='apix.account.invoice',
         inverse_name='odoo_id',
