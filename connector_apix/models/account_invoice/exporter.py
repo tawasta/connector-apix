@@ -106,9 +106,14 @@ class AccountInvoice(models.Model):
         in_memory_zip = cStringIO.StringIO()
         with zipfile.ZipFile(in_memory_zip, 'w') as payload_zip:
 
+            finvoice_xml = self.get_finvoice_xml('ISO-8859-15')
+            if self.european_standard:
+                # A hack to add SpecificationIdentifier to the XML. Finvoice-module will handle in later module versions
+                finvoice_xml = finvoice_xml.replace("</MessageTimeStamp>", "</MessageTimeStamp><SpecificationIdentifier>EN16931</SpecificationIdentifier>")
+
             # Write the XML-file to zip
             payload_zip.writestr(
-                xml_name, self.get_finvoice_xml('ISO-8859-15'))
+                xml_name, finvoice_xml)
 
             # Iterate through all the attachments
             for attachment in attachments:
