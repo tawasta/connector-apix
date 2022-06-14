@@ -1,8 +1,7 @@
-# -*- coding: utf-8 -*-
 ##############################################################################
 #
 #    Author: Oy Tawasta OS Technologies Ltd.
-#    Copyright 2017 Oy Tawasta OS Technologies Ltd. (http://www.tawasta.fi)
+#    Copyright 2017 Oy Tawasta OS Technologies Ltd. (https://tawasta.fi)
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU Affero General Public License as
@@ -20,44 +19,33 @@
 ##############################################################################
 
 {
-    'name': 'APIX Connector',
-    'summary': 'APIX EDI connector for receiving and sending eInvoices',
-    'version': '10.0.0.11.26',
-    'category': 'Connector',
-    'website': 'https://gitlab.com/tawasta/odoo/connector-apix',
-    'author': 'Oy Tawasta Technologies Ltd.',
-    'license': 'AGPL-3',
-    'application': False,
-    'installable': True,
-    'external_dependencies': {
-        'python': [
-            'collections',
-            'cStringIO',
-            'mimetypes',
-            'lxml',
-            'requests',
-            'zipfile',
-        ],
-        'bin': [],
+    "name": "APIX Connector",
+    "summary": "APIX EDI connector for receiving and sending eInvoices",
+    "version": "14.0.1.0.0",
+    "category": "Connector",
+    "website": "https://gitlab.com/tawasta/odoo/connector-apix",
+    "author": "Tawasta",
+    "license": "AGPL-3",
+    "application": False,
+    "installable": True,
+    "external_dependencies": {
+        "python": ["io"],
+        "bin": [],
     },
-    'depends': [
-        'account_invoice_import',
-        'account_invoice_import_finvoice',
-        'account_invoice_transmit_method',
-        'connector',
-        'l10n_fi_finvoice',
+    "depends": [
+        "account_invoice_import",
+        "account_edi_finvoice",
+        "account_invoice_transmit_method",
+        "connector",
+        "l10n_fi_edicode",
     ],
-    'data': [
-        'data/account_invoice_import_config.xml',
-        'data/ir_cron.xml',
-        'data/transmit_method.xml',
-
-        'security/ir.model.access.csv',
-
-        'views/account_invoice_form.xml',
-        'views/apix_backend_form.xml',
-        'views/apix_backend_menu.xml',
+    "post_init_hook": "init_apix_data",
+    "data": [
+        "data/ir_cron.xml",
+        "security/ir.model.access.csv",
+        "views/account_invoice_form.xml",
+        "views/apix_backend_form.xml",
+        "views/apix_backend_menu.xml",
     ],
-    'demo': [
-    ],
+    "demo": [],
 }

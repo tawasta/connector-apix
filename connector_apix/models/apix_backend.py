@@ -1,69 +1,70 @@
-# -*- coding: utf-8 -*-
 import base64
+import datetime
 import hashlib
 import logging
-import datetime
-import requests
-
 from collections import OrderedDict
-from cStringIO import StringIO
-from lxml import etree as ET
+from io import StringIO
 from mimetypes import MimeTypes
 from zipfile import ZipFile
 
+import requests
+from lxml import etree as ET
 
-from odoo import api, fields, models, _
-from odoo.exceptions import Warning, ValidationError
-from odoo.addons.queue_job.job import job
-logger = logging.getLogger(__name__)
+from odoo import _, fields, models
+from odoo.exceptions import ValidationError
+
+_logger = logging.getLogger(__name__)
 
 
 class ApixBackend(models.Model):
     # region Private attributes
-    _name = 'apix.backend'
-    _description = 'APIX Backend'
-    _inherit = 'connector.backend'
+    _name = "apix.backend"
+    _description = "APIX Backend"
+    _inherit = "connector.backend"
 
     _sql_constraints = [
-        ('company_uniq', 'unique(company_id)',
-         'Company can have only one backend.'),
+        ("company_uniq", "unique(company_id)", "Company can have only one backend."),
     ]
 
     _FIELD_STATES = {
-        'confirmed': [('readonly', True)],
-        'unconfirmed': [('readonly', False)],
+        "confirmed": [("readonly", True)],
+        "unconfirmed": [("readonly", False)],
     }
     # endregion
 
     # region Fields declaration
+    name = fields.Char(
+        default=lambda self: self.env.user.company_id.name,
+    )
+
     # Backends start as unconfirmed
     state = fields.Selection(
-        string='State',
+        string="State",
         selection=[
-            ('unconfirmed', 'Unconfirmed'),
-            ('confirmed', 'Confirmed'),
+            ("unconfirmed", "Unconfirmed"),
+            ("confirmed", "Confirmed"),
         ],
-        default='unconfirmed',
+        default="unconfirmed",
     )
 
     # Company for multicompany environments
     company_id = fields.Many2one(
-        comodel_name='res.company',
+        comodel_name="res.company",
         required=True,
-        default=lambda s: s.env['res.users'].browse([s._uid]).company_id,
+        default=lambda self: self.env.user.company_id.id,
         states=_FIELD_STATES,
     )
 
     # Apix username (email)
     username = fields.Char(
-        string='Username',
+        string="Username",
         required=True,
         states=_FIELD_STATES,
     )
 
     # Apix password
     password = fields.Char(
-        string='Password',
+        string="Password",
         required=True,
         copy=False,
         states=_FIELD_STATES,
@@ -71,18 +72,18 @@ class ApixBackend(models.Model):
 
     # Apix API version
     version = fields.Selection(
-        string='Version',
-        selection=[('1.14', 'v1.14')],
-        default='1.14',
+        string="Version",
+        selection=[("1.14", "v1.14")],
+        default="1.14",
         required=True,
         states=_FIELD_STATES,
     )
 
     # Apix environment
     environment = fields.Selection(
-        string='Environment',
-        selection=[('test', 'Test'), ('production', 'Production')],
-        default='test',
+        string="Environment",
+        selection=[("test", "Test"), ("production", "Production")],
+        default="test",
         required=True,
         states=_FIELD_STATES,
     )
@@ -90,27 +91,27 @@ class ApixBackend(models.Model):
     # An optional prefix for business ids.
     # Apix may assign this to virtual operators
     prefix = fields.Char(
-        string='Prefix',
+        string="Prefix",
         states=_FIELD_STATES,
     )
 
     # The identification used for sending and receiving
     transfer_id = fields.Char(
-        string='Transfer id',
+        string="Transfer id",
         readonly=True,
         copy=False,
     )
 
     # The password used for sending and receiving
     transfer_key = fields.Char(
-        string='Transfer key',
+        string="Transfer key",
         readonly=True,
         copy=False,
     )
 
     # An unique identifier assigned to the company
     company_uuid = fields.Char(
-        string='Company UUID',
+        string="Company UUID",
         readonly=True,
         copy=False,
     )
@@ -118,64 +119,62 @@ class ApixBackend(models.Model):
     # The "business id".
     # This can be plain business id or a business id with a prefix
     business_id = fields.Char(
-        string='Business ID',
-        compute='compute_business_id',
+        string="Business ID",
+        compute="_compute_business_id",
     )
 
     # Qualifier for the identification; y-tunnus, orgnr etc.
     # Usually business id (y-tunnus)
     id_qualifier = fields.Char(
-        string='ID Qualifier',
-        selection=[('y-tunnus', 'Business ID')],
-        default='y-tunnus',
+        string="ID Qualifier",
+        selection=[("y-tunnus", "Business ID")],
+        default="y-tunnus",
         required=True,
-        readonly=True
+        readonly=True,
     )
 
     # IdCustomer
     customer_id = fields.Char(
-        string='Customer ID',
+        string="Customer ID",
     )
 
     # CustomerNumber
     customer_number = fields.Char(
-        string='Customer number',
+        string="Customer number",
     )
 
     # ContactPerson
     contact_person = fields.Char(
-        string='Contact person',
+        string="Contact person",
     )
 
     # Email
     contact_email = fields.Char(
-        string='Contact email',
+        string="Contact email",
     )
 
     # OwnerId
-    owner_id = fields.Char(
-        string='Owner ID'
-    )
+    owner_id = fields.Char(string="Owner ID")
 
     # Odoo-settings
     support_email = fields.Char(
-        string='Support email',
+        string="Support email",
         help='Replaces "servicedesk@apix.fi" with this address, if set',
     )
 
     invoice_template_id = fields.Many2one(
-        comodel_name='ir.actions.report.xml',
-        domain=[('model', '=', 'account.invoice')],
-        string='Invoice template',
-        help='Report template used when sending invoices via APIX',
+        comodel_name="ir.actions.report",
+        domain=[("model", "=", "account.move")],
+        string="Invoice template",
+        help="Report template used when sending invoices via APIX",
         required=True,
-        default=lambda s: s.env.ref('account.account_invoices'),
+        default=lambda s: s.env.ref("account.account_invoices"),
     )
     # endregion
 
-    def compute_business_id(self):
+    def _compute_business_id(self):
         for record in self:
-            prefix = record.prefix or ''
+            prefix = record.prefix or ""
             business_id = prefix + record.company_id.company_registry
             record.business_id = business_id
 
@@ -187,7 +186,7 @@ class ApixBackend(models.Model):
             record.AuthenticateByUser()
 
             # Everything is fine (no errors). Set this as confirmed
-            record.state = 'confirmed'
+            record.state = "confirmed"
 
     def action_reset_authentication(self):
         # A helper method for resetting the authentication
@@ -195,7 +194,7 @@ class ApixBackend(models.Model):
             record.transfer_id = False
             record.transfer_key = False
             record.company_uuid = False
-            record.state = 'unconfirmed'
+            record.state = "unconfirmed"
 
     def action_cron_einvoice_fetch(self):
         for backend in self.search([]):
@@ -212,10 +211,9 @@ class ApixBackend(models.Model):
             # Add fetching to queue
             job_desc = _("APIX refetch invoices for '%s'") % record.name
             record.with_context(company_id=record.company_id.id).with_delay(
-                description=job_desc).list_invoices(refetch=True)
+                description=job_desc
+            ).list_invoices(refetch=True)
 
-    @api.multi
-    @job
     def list_invoices(self, refetch=False):
         """
         Fetch list of invoices from APIX
@@ -230,15 +228,11 @@ class ApixBackend(models.Model):
         # Fetch einvoices
         invoices = self.ListInvoiceZIPs()
 
-        logger.debug(
-            'Invoice XML: %s' % ET.tostring(invoices, pretty_print=True))
-        for invoice in invoices.findall('.//Group'):
-            storage_id = \
-                invoice.find(".//Value[@type='StorageID']").text
-            storage_key = \
-                invoice.find(".//Value[@type='StorageKey']").text
-            storage_status = \
-                invoice.find(".//Value[@type='StorageStatus']").text
+        _logger.debug("Invoice XML: %s" % ET.tostring(invoices, pretty_print=True))
+        for invoice in invoices.findall(".//Group"):
+            storage_id = invoice.find(".//Value[@type='StorageID']").text
+            storage_key = invoice.find(".//Value[@type='StorageKey']").text
+            storage_status = invoice.find(".//Value[@type='StorageStatus']").text
 
             document_id_element = invoice.find(".//Value[@type='DocumentID']")
             if document_id_element is not None:
@@ -253,17 +247,21 @@ class ApixBackend(models.Model):
             if sender_name_element is not None:
                 sender_name = sender_name_element.text
             else:
-                sender_name = 'Unknown'
+                sender_name = "Unknown"
 
-            if storage_status == 'UNRECEIVED' \
-                    or refetch and storage_status == 'RECEIVED':
-                job_desc = _("APIX import invoice '%s' from %s") % \
-                           (document_id, sender_name)
-                self.with_delay(description=job_desc)\
-                    .download_invoice(storage_id, storage_key)
+            if (
+                storage_status == "UNRECEIVED"
+                or refetch
+                and storage_status == "RECEIVED"
+            ):
+                job_desc = _("APIX import invoice '%s' from %s") % (
+                    document_id,
+                    sender_name,
+                )
+                self.with_delay(description=job_desc).download_invoice(
+                    storage_id, storage_key
+                )
 
-    @api.multi
-    @job
     def download_invoice(self, storage_id, storage_key):
         self.ensure_one()
 
@@ -276,21 +274,21 @@ class ApixBackend(models.Model):
 
     def get_digest(self, values):
         # Returns the digest needed for requests
-        digest_src = ''
+        digest_src = ""
 
         for value in values:
-            digest_src += values[value] + '+'
+            digest_src += values[value] + "+"
 
         # Strip the last "+"
         digest_src = digest_src[:-1]
-        logger.debug('Calculating digest from %s' % digest_src)
-        digest = 'SHA-256:' + hashlib.sha256(digest_src).hexdigest()
+        _logger.debug("Calculating digest from %s" % digest_src)
+        digest = "SHA-256:" + hashlib.sha256(digest_src.encode("utf-8")).hexdigest()
 
         return digest
 
     def get_password_hash(self):
         # Returns a hashed password
-        password_hash = hashlib.sha256(self.password).hexdigest()
+        password_hash = hashlib.sha256(self.password.encode("utf-8")).hexdigest()
 
         return password_hash
 
@@ -300,18 +298,21 @@ class ApixBackend(models.Model):
         now = datetime.datetime.today()
 
         # Construct the timestamp
-        timestamp = now.strftime('%Y%m%d%H%M%S')
+        timestamp = now.strftime("%Y%m%d%H%M%S")
 
         return timestamp
 
-    def get_url(self, command, variables={}):
+    def get_url(self, command, variables=False):
         # Returns the REST URL based on the environment, command and variables
         # Please note that variables should always be in OrderedDict,
         # as APIX API expects the variables in a certain order
 
-        terminal_commands = ['list', 'list2', 'receive', 'download', 'metadata']
+        if not variables:
+            variables = {}
 
-        if self.environment == 'production':
+        terminal_commands = ["list", "list2", "receive", "download", "metadata"]
+
+        if self.environment == "production":
             if command in terminal_commands:
                 url = "https://terminal.apix.fi/"
             else:
@@ -324,45 +325,41 @@ class ApixBackend(models.Model):
 
         url += "%s?" % command
 
-        for key, value in variables.iteritems():
+        for key, value in variables.items():
             url += "%s=%s&" % (key, value)  # Add variables to the url
 
         if variables:
-            url = url.rstrip('&')  # Strip the last &
+            url = url.rstrip("&")  # Strip the last &
 
-        logger.debug('Using url %s' % url)
+        _logger.debug("Using url %s" % url)
 
         return url
 
     def get_values_from_url(self, url):
         response = requests.get(url)
-        html = response.text.encode('latin-1')
+        html = response.text.encode("latin-1")
         root = ET.fromstring(html)
 
         # Get response status
-        res_status = " ".join(
-            [status.text for status in root.findall('Status')]
-        )
+        res_status = " ".join([status.text for status in root.findall("Status")])
         res_status_code = " ".join(
-            [status.text for status in root.findall('StatusCode')]
+            [status.text for status in root.findall("StatusCode")]
         )
-        res_free_text = " ".join(
-            [status.text for status in root.findall('FreeText')]
-        )
+        res_free_text = " ".join([status.text for status in root.findall("FreeText")])
 
         msg = "%s [%s]: %s" % (res_status, res_status_code, res_free_text)
 
         if res_status == "ERR":
-            logger.warn(msg)  # Log error message and error
-            raise Warning(res_free_text)  # Show the human readable part
+            _logger.warning(msg)  # Log error message and error
+            raise ValidationError(res_free_text)  # Show the human-readable part
         else:
-            logger.debug(msg)
+            _logger.debug(msg)
 
         groups = list()
-        for group in root.iter('Group'):
+        for group in root.iter("Group"):
             values = dict()
-            for value in group.iter('Value'):
-                values[value.attrib['type']] = value.text
+            for value in group.iter("Value"):
+                values[value.attrib["type"]] = value.text
 
             groups.append(values)
 
@@ -374,43 +371,43 @@ class ApixBackend(models.Model):
 
     # RetrieveTransferID API method
     def RetrieveTransferID(self):
-        logger.debug('APIX RetrieveTransferId')
+        _logger.debug("APIX RetrieveTransferId")
 
         values = OrderedDict()
-        values['id'] = self.business_id
-        values['idq'] = self.id_qualifier
-        values['uid'] = self.username
-        values['ts'] = self.get_timestamp()
-        values['d'] = self.get_password_hash()
+        values["id"] = self.business_id
+        values["idq"] = self.id_qualifier
+        values["uid"] = self.username
+        values["ts"] = self.get_timestamp()
+        values["d"] = self.get_password_hash()
 
         # Get the digest hash
-        values['d'] = self.get_digest(values)
+        values["d"] = self.get_digest(values)
 
-        command = 'app-transferID'
+        command = "app-transferID"
         url = self.get_url(command, values)
         response = self.get_values_from_url(url)
 
         if response:
-            self.transfer_id = response.get('TransferID', False)
-            self.transfer_key = response.get('TransferKey', False)
-            self.company_uuid = response.get('UniqueCompanyID', False)
+            self.transfer_id = response.get("TransferID", False)
+            self.transfer_key = response.get("TransferKey", False)
+            self.company_uuid = response.get("UniqueCompanyID", False)
 
     # AuthenticateByUser API method
     def AuthenticateByUser(self):
-        logger.debug('APIX AuthenticateByUser')
+        _logger.debug("APIX AuthenticateByUser")
 
         values = OrderedDict()
-        values['uid'] = self.username
-        values['t'] = self.get_timestamp()
-        values['d'] = self.get_password_hash()
+        values["uid"] = self.username
+        values["t"] = self.get_timestamp()
+        values["d"] = self.get_password_hash()
 
         # Get the digest hash
-        values['d'] = self.get_digest(values)
+        values["d"] = self.get_digest(values)
 
         # Add pass to variables
-        values['pass'] = self.password
+        values["pass"] = self.password
 
-        command = 'authuser'
+        command = "authuser"
         url = self.get_url(command, values)
         response = self.get_values_from_url(url)
 
@@ -419,94 +416,92 @@ class ApixBackend(models.Model):
             response = response[0]
 
         if response:
-            self.customer_id = response.get('IdCustomer', False)
-            self.customer_number = response.get('CustomerNumber', False)
-            self.contact_person = response.get('ContactPerson', False)
-            self.contact_email = response.get('Email', False)
-            self.owner_id = response.get('OwnerId', False)
+            self.customer_id = response.get("IdCustomer", False)
+            self.customer_number = response.get("CustomerNumber", False)
+            self.contact_person = response.get("ContactPerson", False)
+            self.contact_email = response.get("Email", False)
+            self.owner_id = response.get("OwnerId", False)
 
     def get_default_url_attributes(
-            self,
-            show_soft=True,  # Software
-            show_ver=True,  # Software version
-            storage_id=False,  # StorageID
-            storage_key=False,  # StorageKey
-            mark_received=False,  # Mark invoice as received
+        self,
+        show_soft=True,  # Software
+        show_ver=True,  # Software version
+        storage_id=False,  # StorageID
+        storage_key=False,  # StorageKey
+        mark_received=False,  # Mark invoice as received
     ):
         values = OrderedDict()
 
         if show_soft:
-            values['soft'] = "Standard"
+            values["soft"] = "Standard"
 
         if show_ver:
-            values['ver'] = "1.0"
+            values["ver"] = "1.0"
 
         if mark_received:
-            values['markReceived'] = 'yes'
+            values["markReceived"] = "yes"
 
         # Use SID OR TraID, never both
         if storage_id:
-            values['SID'] = storage_id
+            values["SID"] = storage_id
         else:
-            values['TraID'] = self.transfer_id
+            values["TraID"] = self.transfer_id
 
-        values['t'] = self.get_timestamp()
+        values["t"] = self.get_timestamp()
 
         if storage_key:
-            values['StorageKey'] = storage_key
+            values["StorageKey"] = storage_key
         else:
-            values['TraKey'] = self.transfer_key
+            values["TraKey"] = self.transfer_key
 
         # Get the digest hash
-        values['d'] = self.get_digest(values)
+        values["d"] = self.get_digest(values)
 
         # Remove TransferKey and StorageKey. We don't want them to the url
         values.pop("TraKey", None)
         values.pop("StorageKey", None)
 
-        logger.debug('Using values %s' % values)
+        _logger.debug("Using values %s" % values)
 
         return values
 
     def SendInvoiceZIP(self, payload):
-        logger.debug("APIX SendInvoiceZIP")
+        _logger.debug("APIX SendInvoiceZIP")
         values = self.get_default_url_attributes()
 
-        command = 'invoices'
+        command = "invoices"
         url = self.get_url(command, values)
 
         # Post the file to the server
         res = requests.put(url, data=payload)
         res.raise_for_status()
 
-        utf8_parser = ET.XMLParser(encoding='utf-8')
-        res_etree = ET.fromstring(res.text.encode('utf-8'), parser=utf8_parser)
+        utf8_parser = ET.XMLParser(encoding="utf-8")
+        res_etree = ET.fromstring(res.text.encode("utf-8"), parser=utf8_parser)
 
         self.validateResponse(res_etree)
 
         return res_etree
 
     def ListInvoiceZIPs(self):
-        logger.debug("APIX ListInvoiceZIPs")
+        _logger.debug("APIX ListInvoiceZIPs")
 
-        values = self.get_default_url_attributes(
-            show_soft=False, show_ver=False
-        )
+        values = self.get_default_url_attributes(show_soft=False, show_ver=False)
 
-        command = 'list2'
+        command = "list2"
         url = self.get_url(command, values)
 
         # Get invoices from server
         res = requests.get(url)
         res.raise_for_status()
 
-        utf8_parser = ET.XMLParser(encoding='utf-8')
-        res_etree = ET.fromstring(res.text.encode('utf-8'), parser=utf8_parser)
+        utf8_parser = ET.XMLParser(encoding="utf-8")
+        res_etree = ET.fromstring(res.text.encode("utf-8"), parser=utf8_parser)
 
         return res_etree
 
     def Download(self, storage_id, storage_key):
-        logger.debug("APIX Download")
+        _logger.debug("APIX Download")
         values = self.get_default_url_attributes(
             show_soft=False,
             show_ver=False,
@@ -515,7 +510,7 @@ class ApixBackend(models.Model):
             storage_key=storage_key,
         )
 
-        command = 'download'
+        command = "download"
         url = self.get_url(command, values)
 
         # Download invoice from server
@@ -525,65 +520,61 @@ class ApixBackend(models.Model):
         zip_file = ZipFile(StringIO(res.content))
         mime = MimeTypes()
 
-        Attachment = self.env['ir.attachment']
+        Attachment = self.env["ir.attachment"]
 
-        finvoice=False
+        finvoice = False
         attachment_ids = list()
         for file_name in zip_file.namelist():
             # Save to attachments without res_id
             values = dict(
                 name=file_name,
                 datas_fname=file_name,
-                type='binary',
+                type="binary",
                 datas=base64.b64encode(zip_file.read(file_name)),
-                res_model='account.invoice',
+                res_model="account.move",
                 mimetype=mime.guess_type(file_name),
                 company_id=self.company_id.id,
             )
 
             attachment_id = Attachment.create(values)
-            if file_name == 'invoice.xml':
+            if file_name == "invoice.xml":
                 finvoice = attachment_id
             else:
                 attachment_ids.append(attachment_id)
 
-        res = self.env['apix.account.invoice'].import_finvoice(
-            finvoice, attachment_ids)
+        res = self.env["apix.account.invoice"].import_finvoice(finvoice, attachment_ids)
 
         return res
 
     def validateResponse(self, response):
-        logger.debug('Response: %s' % ET.tostring(response))
+        _logger.debug("Response: %s" % ET.tostring(response))
 
-        response_status = response.find('.//Status')
+        response_status = response.find(".//Status")
 
         if response_status is None:
-            raise ValidationError(
-                _('Invalid response: response status not found')
-            )
+            raise ValidationError(_("Invalid response: response status not found"))
 
-        logger.debug("Response status: '%s'" % response_status.text)
+        _logger.debug("Response status: '%s'" % response_status.text)
 
-        if response_status.text == 'ERR':
+        if response_status.text == "ERR":
             try:
                 error = response.find(".//Value[@type='ValidateText']").text
             except:
-                error = _('Unknown error')
+                error = _("Unknown error")
 
             try:
-                statuscode = response.find('.//StatusCode').text
+                statuscode = response.find(".//StatusCode").text
             except:
-                statuscode = _('Unknown status code')
+                statuscode = _("Unknown status code")
 
-            msg = 'API Error (%s): %s' % \
-                  (statuscode , error)
+            msg = "API Error (%s): %s" % (statuscode, error)
 
             # Replace the support address shown in the message
             if self.support_email:
-                msg = msg.replace('servicedesk@apix.fi', self.support_email)
+                msg = msg.replace("servicedesk@apix.fi", self.support_email)
 
             raise ValidationError(msg)
 
-        elif response_status == 'OK':
+        elif response_status == "OK":
             # Response is OK, no actions
             return
