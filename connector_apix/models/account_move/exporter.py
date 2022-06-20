@@ -127,7 +127,7 @@ class AccountMove(models.Model):
             _logger.debug(_(f"Response for '{record.name}': {response}"))
 
             record.date_einvoice_sent = fields.Date.today()
-            record.sent = True
+            record.is_move_sent = True
 
             apix_batch_id = response.find(".//Value[@type='BatchID']")
             if apix_batch_id is not None:
@@ -158,7 +158,7 @@ class AccountMove(models.Model):
             # Create a binding
             self.sudo().env["apix.account.invoice"].create(binding_values)
 
-            record.message_post(_(f'Invoice sent as "{transmit_method}"'))
+            record.message_post(body=_(f"Invoice sent as '{transmit_method}'"))
             _logger.debug(_(f"Sent '{record.name}' as '{transmit_method}'"))
 
     def validate_einvoice(self):
