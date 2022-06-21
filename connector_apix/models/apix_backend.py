@@ -3,7 +3,7 @@ import datetime
 import hashlib
 import logging
 from collections import OrderedDict
-from io import StringIO
+from io import BytesIO
 from mimetypes import MimeTypes
 from zipfile import ZipFile
 
@@ -254,10 +254,7 @@ class ApixBackend(models.Model):
                 or refetch
                 and storage_status == "RECEIVED"
             ):
-                job_desc = _("APIX import invoice '%s' from %s") % (
-                    document_id,
-                    sender_name,
-                )
+                job_desc = _(f"APIX import invoice '{document_id}' from {sender_name}")
                 self.with_delay(description=job_desc).download_invoice(
                     storage_id, storage_key
                 )
@@ -268,7 +265,7 @@ class ApixBackend(models.Model):
         # Download invoice
         res = self.Download(storage_id, storage_key)
 
-        return _("Imported invoice %s") % res
+        return _(f"Imported invoice with id '{res.id}'")
 
     # endregion
 
@@ -517,10 +514,10 @@ class ApixBackend(models.Model):
         res = requests.get(url)
         res.raise_for_status()
 
-        zip_file = ZipFile(StringIO(res.content))
+        zip_file = ZipFile(BytesIO(res.content))
         mime = MimeTypes()
 
-        Attachment = self.env["ir.attachment"]
+        ir_attachment = self.env["ir.attachment"]
 
         finvoice = False
         attachment_ids = list()
@@ -528,23 +525,24 @@ class ApixBackend(models.Model):
             # Save to attachments without res_id
             values = dict(
                 name=file_name,
-                datas_fname=file_name,
                 type="binary",
                 datas=base64.b64encode(zip_file.read(file_name)),
                 res_model="account.move",
-                mimetype=mime.guess_type(file_name),
+                mimetype=mime.guess_type(file_name)[0],
                 company_id=self.company_id.id,
             )
 
-            attachment_id = Attachment.create(values)
+            attachment_id = ir_attachment.create(values)
             if file_name == "invoice.xml":
                 finvoice = attachment_id
             else:
                 attachment_ids.append(attachment_id)
 
-        res = self.env["apix.account.invoice"].import_finvoice(finvoice, attachment_ids)
+        invoice = self.env.ref(
+            "account_edi_finvoice.edi_finvoice_3_0"
+        )._create_invoice_from_attachment(finvoice)
 
-        return res
+        return invoice
 
     def validateResponse(self, response):
         _logger.debug("Response: %s" % ET.tostring(response))

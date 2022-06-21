@@ -33,10 +33,10 @@
         "bin": [],
     },
     "depends": [
-        "account_invoice_import",
         "account_edi_finvoice",
         "account_invoice_transmit_method",
         "connector",
+        "l10n_fi_business_code",
         "l10n_fi_edicode",
     ],
     "post_init_hook": "init_apix_data",
