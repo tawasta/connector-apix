@@ -557,13 +557,15 @@ class ApixBackend(models.Model):
         if response_status.text == "ERR":
             try:
                 error = response.find(".//Value[@type='ValidateText']").text
-            except:
+            except Exception as e:
                 error = _("Unknown error")
+                _logger.error(e)
 
             try:
                 statuscode = response.find(".//StatusCode").text
-            except:
+            except Exception as e:
                 statuscode = _("Unknown status code")
+                _logger.error(e)
 
             msg = "API Error (%s): %s" % (statuscode, error)
 

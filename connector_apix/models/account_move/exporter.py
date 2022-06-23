@@ -56,8 +56,6 @@ class AccountMove(models.Model):
         self.ensure_one()
 
         _logger.debug(f"Generating APIX payload for '{self.name}'")
-        f"finvoice_{self.name}.xml"
-
         # Generate PDF
         backend = self.get_apix_backend()
         report_name = backend.invoice_template_id.report_name
