@@ -21,7 +21,7 @@
 {
     "name": "APIX Connector",
     "summary": "APIX EDI connector for receiving and sending eInvoices",
-    "version": "14.0.1.0.2",
+    "version": "14.0.1.0.3",
     "category": "Connector",
     "website": "https://gitlab.com/tawasta/odoo/connector-apix",
     "author": "Tawasta",
