@@ -81,11 +81,19 @@ class AccountMove(models.Model):
                 raise ValidationError(_("Could not find a Finvoice document to export"))
 
             # Iterate through all the attachments
+            attached_filenames = []
             for attachment in attachments:
                 # Write the file to the cached zip
                 file_name = attachment.name or "attachment"
-                datas = base64.b64decode(attachment.datas)
 
+                if file_name in attached_filenames:
+                    # If attachment with this name is already attached, skip this one
+                    # File names must be unique, so we'll only send the newest
+                    continue
+
+                attached_filenames.append(file_name)
+
+                datas = base64.b64decode(attachment.datas)
                 payload_zip.writestr(file_name, datas)
 
         payload = in_memory_zip.getvalue()
