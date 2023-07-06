@@ -175,8 +175,9 @@ class ApixBackend(models.Model):
     def _compute_business_id(self):
         for record in self:
             prefix = record.prefix or ""
-            business_id = prefix + record.company_id.company_registry
-            record.business_id = business_id
+            business_id = record.company_id.company_registry or ""
+
+            record.business_id = prefix + business_id
 
     # region Action methods
     def action_authenticate(self):
@@ -508,6 +509,7 @@ class ApixBackend(models.Model):
         )
 
         command = "download"
+        company_id = self.company_id.id
         url = self.get_url(command, values)
 
         # Download invoice from server
@@ -529,7 +531,7 @@ class ApixBackend(models.Model):
                 datas=base64.b64encode(zip_file.read(file_name)),
                 res_model="account.move",
                 mimetype=mime.guess_type(file_name)[0],
-                company_id=self.company_id.id,
+                company_id=company_id,
             )
 
             attachment_id = ir_attachment.create(values)
@@ -538,9 +540,11 @@ class ApixBackend(models.Model):
             else:
                 attachment_ids += attachment_id
 
-        invoice = self.env.ref(
-            "account_edi_finvoice.edi_finvoice_3_0"
-        )._create_invoice_from_attachment(finvoice)
+        invoice = (
+            self.env.ref("account_edi_finvoice.edi_finvoice_3_0")
+            .with_company(company_id)
+            ._create_invoice_from_attachment(finvoice)
+        )
 
         if not invoice:
             raise ValidationError(_("Could not create invoice"))
