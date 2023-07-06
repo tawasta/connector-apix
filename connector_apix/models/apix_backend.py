@@ -520,7 +520,7 @@ class ApixBackend(models.Model):
         ir_attachment = self.env["ir.attachment"]
 
         finvoice = False
-        attachment_ids = list()
+        attachment_ids = self.env["ir.attachment"]
         for file_name in zip_file.namelist():
             # Save to attachments without res_id
             values = dict(
@@ -536,11 +536,16 @@ class ApixBackend(models.Model):
             if file_name == "invoice.xml":
                 finvoice = attachment_id
             else:
-                attachment_ids.append(attachment_id)
+                attachment_ids += attachment_id
 
         invoice = self.env.ref(
             "account_edi_finvoice.edi_finvoice_3_0"
         )._create_invoice_from_attachment(finvoice)
+
+        if not invoice:
+            raise ValidationError(_("Could not create invoice"))
+
+        attachment_ids.write({"res_id": invoice.id})
 
         return invoice
 
