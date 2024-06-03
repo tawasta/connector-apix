@@ -85,7 +85,8 @@ class AccountMove(models.Model):
             finvoice_attachment = finvoice_xml.attachment_id
             finvoice_filename = finvoice_attachment.name
 
-            payload_zip.writestr(finvoice_filename, finvoice_attachment.datas)
+            finvoice_datas = base64.b64decode(finvoice_attachment.datas)
+            payload_zip.writestr(finvoice_filename, finvoice_datas)
             attached_filenames.append(finvoice_filename)
 
             # Iterate through all the attachments
@@ -123,14 +124,6 @@ class AccountMove(models.Model):
             _logger.debug(f"Using backend {backend.name}")
 
             payload = record.get_apix_payload()
-
-            self.env["ir.attachment"].create(
-                {
-                    "name": f"apix_test_{record.name}.zip",
-                    "datas": payload,
-                    "type": "binary",
-                }
-            )
 
             try:
                 response = backend.SendInvoiceZIP(payload)
