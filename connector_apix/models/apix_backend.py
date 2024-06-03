@@ -565,7 +565,11 @@ class ApixBackend(models.Model):
 
         if response_status.text == "ERR":
             try:
-                error = response.find(".//Value[@type='ValidateText']").text
+                error = response.find(".//Value[@type='ValidateText']")
+                if error:
+                    error = error.text
+                else:
+                    error = ". ".join([r.text for r in response.findall(".//FreeText")])
             except Exception as e:
                 error = _("Unknown error")
                 _logger.error(e)

@@ -80,8 +80,15 @@ class AccountMove(models.Model):
             if not finvoice_xml:
                 raise ValidationError(_("Could not find a Finvoice document to export"))
 
-            # Iterate through all the attachments
             attached_filenames = []
+
+            finvoice_attachment = finvoice_xml.attachment_id
+            finvoice_filename = finvoice_attachment.name
+
+            payload_zip.writestr(finvoice_filename, finvoice_attachment.datas)
+            attached_filenames.append(finvoice_filename)
+
+            # Iterate through all the attachments
             for attachment in attachments:
                 # Write the file to the cached zip
                 file_name = attachment.name or "attachment"
