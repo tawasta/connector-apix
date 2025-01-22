@@ -108,7 +108,7 @@ class AccountMove(models.Model):
             raise ValidationError(_("Could not find a Finvoice document to export"))
 
         # Use the latest document
-        finvoice_xml = finvoice_xml[0]
+        finvoice_xml = finvoice_xml[0].sudo()
 
         # Construct Finvoice XML data
         attachment_names = ["invoice.pdf"]
