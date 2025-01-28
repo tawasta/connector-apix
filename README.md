@@ -10,6 +10,6 @@ Available addons
 ----------------
 addon | version | maintainers | summary
 --- | --- | --- | ---
-[connector_apix](connector_apix/) | 17.0.1.0.0 |  | APIX EDI connector for receiving and sending eInvoices
+[connector_apix](connector_apix/) | 17.0.1.0.1 |  | APIX EDI connector for receiving and sending eInvoices
 
 [//]: # (end addons)

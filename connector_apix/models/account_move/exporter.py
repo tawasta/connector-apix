@@ -92,12 +92,9 @@ class AccountMove(models.Model):
             [
                 ("res_model", "=", "account.move"),
                 ("res_id", "in", self.ids),
-                ("mimetype", "in", ["application/pdf"]),
+                # ("mimetype", "in", ["application/pdf"]),
             ]
         )
-        if len(attachments) > 0:
-            attachments = self.env["ir.attachment"]
-            _logger.warning("Attachments are not supported!")
 
         # Get EDI document (Finvoice document)
         finvoice_xml = self.edi_document_ids.filtered(
@@ -137,7 +134,6 @@ class AccountMove(models.Model):
         # Write the payload
         with zipfile.ZipFile(payload_zip_tmp, "w") as payload_zip:
             payload_data = finvoice_datas
-            # payload_data = base64.b64decode(finvoice_datas)
             payload_zip.writestr(finvoice_filename, payload_data)
 
             # Add printed PDF
