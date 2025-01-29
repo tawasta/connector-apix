@@ -68,7 +68,7 @@ class AccountMove(models.Model):
         finvoice_object.set_InvoiceUrlText([pdf_url])
 
         if attachments:
-            finvoice_object.set_InvoiceUrlText(["attachment.zip"])
+            finvoice_object.set_InvoiceUrlText(["attachments.zip"])
 
     def _add_attachments_to_finvoice(self, finvoice_string, add_zip=False):
         root = etree.fromstring(finvoice_string)
@@ -88,7 +88,7 @@ class AccountMove(models.Model):
 
         if add_zip:
             new_element = etree.Element("InvoiceUrlText")
-            new_element.text = "file://attachment.zip"
+            new_element.text = "file://attachments.zip"
             root.append(new_element)
 
         return etree.tostring(root)
@@ -127,22 +127,25 @@ class AccountMove(models.Model):
 
         finvoice_attachment = finvoice_xml.attachment_id
 
+        # Add attachments to zip
+        attachments_zip_tmp = BytesIO()
+        attachments_payload = False
+        if attachments:
+            with zipfile.ZipFile(attachments_zip_tmp, "w") as attachments_zip:
+                # Iterate through all the attachments
+                for attachment in attachments:
+                    # Write the file to the cached zip
+                    file_name = attachment.name or "attachment"
+
+                    attachments_zip.writestr(file_name, attachment.raw)
+
+            attachments_payload = attachments_zip_tmp.getvalue()
+
         in_memory_zip = BytesIO()
-        in_memory_attachments_zip = BytesIO()
         with zipfile.ZipFile(in_memory_zip, "w") as payload_zip:
-            if backend.use_attachments and attachments:
-                with zipfile.ZipFile(in_memory_attachments_zip, "w") as attachment_zip:
-                    # Iterate through all the attachments
-                    for attachment in attachments:
-                        file_name = attachment.name or "attachment"
-
-                        # Write the file to the cached zip
-                        datas = base64.b64decode(attachment.datas)
-                        attachment_zip.writestr(file_name, datas)
-
-                payload_zip.writestr(
-                    "attachment.zip", in_memory_attachments_zip.getvalue()
-                )
+            if backend.use_attachments and attachments_payload:
+                _logger.debug("Adding attachments")
+                payload_zip.writestr("attachments.zip", attachments_payload)
 
             finvoice_datas = base64.b64decode(finvoice_attachment.datas)
 
