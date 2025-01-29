@@ -110,7 +110,7 @@ class AccountMove(models.Model):
 
         invoice_pdf = False
         # Generate invoice PDF if using custom template
-        if backend.use_invoice_template and backend.invoice_template_id:
+        if backend.invoice_template_id:
             report_name = backend.invoice_template_id.report_name
             inv_report = self.env["ir.actions.report"]._get_report_from_name(
                 report_name
@@ -143,16 +143,13 @@ class AccountMove(models.Model):
 
         in_memory_zip = BytesIO()
         with zipfile.ZipFile(in_memory_zip, "w") as payload_zip:
-            if backend.use_attachments and attachments_payload:
-                _logger.debug("Adding attachments")
-                payload_zip.writestr("attachments.zip", attachments_payload)
-
             finvoice_datas = base64.b64decode(finvoice_attachment.datas)
 
-            if backend.use_invoice_template:
-                add_zip = backend.use_attachments and len(attachments) > 0
+            if attachments_payload:
+                _logger.debug("Adding attachments")
+                payload_zip.writestr("attachments.zip", attachments_payload)
                 finvoice_datas = self._add_attachments_to_finvoice(
-                    finvoice_datas, add_zip=add_zip
+                    finvoice_datas, add_zip=True
                 )
 
             if invoice_pdf:

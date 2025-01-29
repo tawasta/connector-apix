@@ -162,12 +162,6 @@ class ApixBackend(models.Model):
         help='Replaces "servicedesk@apix.fi" with this address, if set',
     )
 
-    use_invoice_template = fields.Boolean(
-        "Custom invoice template",
-        help="Use Odoo-generated invoice template instead of APIX-template",
-        default=False,
-    )
-
     invoice_template_id = fields.Many2one(
         comodel_name="ir.actions.report",
         domain=[("model", "=", "account.move")],
@@ -175,12 +169,6 @@ class ApixBackend(models.Model):
         help="Report template used when sending invoices via APIX",
         required=True,
         default=lambda s: s.env.ref("account.account_invoices"),
-    )
-
-    use_attachments = fields.Boolean(
-        "Use attachments",
-        help="Send invoice attachments to customer",
-        default=False,
     )
 
     # endregion

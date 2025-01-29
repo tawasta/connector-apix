@@ -51,19 +51,7 @@
                         groups="base.group_erp_manager"
                     >
                         <field name="support_email" />
-                        <field
-                            name="use_invoice_template"
-                            widget="boolean_toggle"
-                        />
-                        <field
-                            name="invoice_template_id"
-                            attrs="{'invisible': [('use_invoice_template', '=', False)]}"
-                        />
-                        <field
-                            name="use_attachments"
-                            attrs="{'invisible': [('use_invoice_template', '=', False)]}"
-                            widget="boolean_toggle"
-                        />
+                        <field name="invoice_template_id" />
                     </group>
 
                     <group
