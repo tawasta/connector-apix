@@ -170,6 +170,7 @@ class ApixBackend(models.Model):
         required=True,
         default=lambda s: s.env.ref("account.account_invoices"),
     )
+
     # endregion
 
     def _compute_business_id(self):

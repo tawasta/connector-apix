@@ -3,6 +3,8 @@ import logging
 import zipfile
 from io import BytesIO
 
+from lxml import etree
+
 from odoo import _, fields, models
 from odoo.exceptions import ValidationError
 
@@ -46,21 +48,10 @@ class AccountMove(models.Model):
         return MessageReceiverDetailsType
 
     def add_finvoice_apix_fields(self, finvoice_object):
+        # TODO: is this method used anymore?
+        _logger.debug("Adding APIX fields to Finvoice")
         latest_invoice_pdf = self._get_latest_invoice_pdf()
         pdf_url = "file://%s" % latest_invoice_pdf.name
-
-        finvoice_object.set_InvoiceUrlNameText(["APIX_PDFFILE"])
-        finvoice_object.set_InvoiceUrlText([pdf_url])
-
-    def get_apix_payload(self):
-        self.ensure_one()
-
-        _logger.debug(f"Generating APIX payload for '{self.name}'")
-        # Generate PDF
-        backend = self.get_apix_backend()
-        report_name = backend.invoice_template_id.report_name
-        inv_report = self.env["ir.actions.report"]._get_report_from_name(report_name)
-        inv_report._render_qweb_pdf(self.ids)
 
         # Get attachments
         attachments = self.env["ir.attachment"].search(
@@ -70,41 +61,112 @@ class AccountMove(models.Model):
             ]
         )
 
+        finvoice_object.set_InvoiceUrlNameText(["APIX_PDFFILE"])
+        if attachments:
+            finvoice_object.set_InvoiceUrlNameText(["APIX_ATTACHMENT"])
+
+        finvoice_object.set_InvoiceUrlText([pdf_url])
+
+        if attachments:
+            finvoice_object.set_InvoiceUrlText(["attachments.zip"])
+
+    def _add_attachments_to_finvoice(self, finvoice_string, add_zip=False):
+        root = etree.fromstring(finvoice_string)
+
+        new_element = etree.Element("InvoiceUrlNameText")
+        new_element.text = "APIX_PDFFILE"
+        root.append(new_element)
+
+        if add_zip:
+            new_element = etree.Element("InvoiceUrlNameText")
+            new_element.text = "APIX_ATTACHMENT"
+            root.append(new_element)
+
+        new_element = etree.Element("InvoiceUrlText")
+        new_element.text = "file://invoice.pdf"
+        root.append(new_element)
+
+        if add_zip:
+            new_element = etree.Element("InvoiceUrlText")
+            new_element.text = "file://attachments.zip"
+            root.append(new_element)
+
+        return etree.tostring(root)
+
+    def get_apix_payload(self):
+        self.ensure_one()
+
+        _logger.debug(f"Generating APIX payload for '{self.name}'")
+        # Generate PDF
+        backend = self.get_apix_backend()
+
+        # Get attachments
+        attachments = self.env["ir.attachment"].search(
+            [
+                ("res_model", "=", "account.move"),
+                ("res_id", "in", self.ids),
+            ]
+        )
+
+        invoice_pdf = False
+        # Generate invoice PDF if using custom template
+        if backend.invoice_template_id:
+            report_name = backend.invoice_template_id.report_name
+            inv_report = self.env["ir.actions.report"]._get_report_from_name(
+                report_name
+            )
+            invoice_pdf = inv_report._render_qweb_pdf(self.ids)[0]
+
+        # Finvoice XML / attachment
+        finvoice_xml = self.edi_document_ids.filtered(
+            lambda s: s.edi_format_id.code == "finvoice_3_0"
+        )
+
+        if not finvoice_xml:
+            raise ValidationError(_("Could not find a Finvoice document to export"))
+
+        finvoice_attachment = finvoice_xml.attachment_id
+
+        # Add attachments to zip
+        attachments_zip_tmp = BytesIO()
+        attachments_payload = False
+        if attachments:
+            with zipfile.ZipFile(attachments_zip_tmp, "w") as attachments_zip:
+                # Iterate through all the attachments
+                for attachment in attachments:
+                    # Write the file to the cached zip
+                    file_name = attachment.name or "attachment"
+
+                    attachments_zip.writestr(file_name, attachment.raw)
+
+            attachments_payload = attachments_zip_tmp.getvalue()
+
         in_memory_zip = BytesIO()
         with zipfile.ZipFile(in_memory_zip, "w") as payload_zip:
-
-            finvoice_xml = self.edi_document_ids.filtered(
-                lambda s: s.edi_format_id.code == "finvoice_3_0"
-            )
-
-            if not finvoice_xml:
-                raise ValidationError(_("Could not find a Finvoice document to export"))
-
-            attached_filenames = []
-
-            finvoice_attachment = finvoice_xml.attachment_id
-            finvoice_filename = finvoice_attachment.name
-
             finvoice_datas = base64.b64decode(finvoice_attachment.datas)
-            payload_zip.writestr(finvoice_filename, finvoice_datas)
-            attached_filenames.append(finvoice_filename)
 
-            # Iterate through all the attachments
-            for attachment in attachments:
-                # Write the file to the cached zip
-                file_name = attachment.name or "attachment"
+            if attachments_payload:
+                _logger.debug("Adding attachments")
+                payload_zip.writestr("attachments.zip", attachments_payload)
+                finvoice_datas = self._add_attachments_to_finvoice(
+                    finvoice_datas, add_zip=True
+                )
 
-                if file_name in attached_filenames:
-                    # If attachment with this name is already attached, skip this one
-                    # File names must be unique, so we'll only send the newest
-                    continue
+            if invoice_pdf:
+                payload_zip.writestr("invoice.pdf", invoice_pdf)
 
-                attached_filenames.append(file_name)
-
-                datas = base64.b64decode(attachment.datas)
-                payload_zip.writestr(file_name, datas)
+            payload_zip.writestr("invoice.xml", finvoice_datas)
 
         payload = in_memory_zip.getvalue()
+
+        # Save payload for debugging purposes
+        self.env["ir.attachment"].create(
+            {
+                "name": f"apix_payload_{self.name}.zip",
+                "raw": payload,
+            }
+        )
+
         _logger.debug(f"APIX payload for '{self.name}' generated")
 
         return payload
