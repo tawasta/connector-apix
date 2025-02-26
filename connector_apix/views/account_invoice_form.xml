@@ -44,13 +44,20 @@
         <field name="inherit_id" ref="account.view_move_form" />
         <field name="arch" type="xml">
             <xpath expr="//page[last()]" position="after">
-                <page name="apix_bindings" string="APIX" groups="base.group_system">
+                <page
+                    name="apix_bindings"
+                    string="APIX"
+                    groups="base.group_system"
+                >
                     <field name="apix_bind_ids">
                         <tree create="false" delete="false">
                             <field name="backend_id" readonly="1" />
                             <field name="odoo_id" readonly="1" />
                             <field name="apix_batch_id" readonly="1" />
-                            <field name="apix_accepted_document_id" readonly="1" />
+                            <field
+                                name="apix_accepted_document_id"
+                                readonly="1"
+                            />
                             <field name="apix_cost_in_credits" readonly="1" />
                         </tree>
                     </field>
