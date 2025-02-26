@@ -52,7 +52,10 @@
                         <field name="name" class="oe_inline" />
                     </h1>
                     <group name="configuration" groups="base.group_erp_manager">
-                        <group name="odoo_configuration" string="Odoo configuration">
+                        <group
+                            name="odoo_configuration"
+                            string="Odoo configuration"
+                        >
                             <field name="support_email" />
                             <field name="invoice_template_id" />
                         </group>
