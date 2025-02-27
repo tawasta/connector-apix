@@ -529,31 +529,31 @@ class ApixBackend(models.Model):
         mime = MimeTypes()
 
         ir_attachment = self.env["ir.attachment"]
-
-        finvoice = False
         attachment_ids = self.env["ir.attachment"]
+
+        invoice = False
         for file_name in zip_file.namelist():
             # Save to attachments without res_id
+            file_data = zip_file.read(file_name)
+            datas = base64.b64encode(file_data)
             values = dict(
                 name=file_name,
                 type="binary",
-                datas=base64.b64encode(zip_file.read(file_name)),
+                datas=datas,
                 res_model="account.move",
                 mimetype=mime.guess_type(file_name)[0],
                 company_id=company_id,
             )
 
-            attachment_id = ir_attachment.create(values)
             if file_name == "invoice.xml":
-                finvoice = attachment_id
+                # The actual invoice data
+                invoice = self.env["account.move"]._import_finvoice(
+                    ET.fromstring(file_data),
+                    self.env["account.move"].create({"move_type": "in_invoice"}),
+                    company_id,
+                )
             else:
-                attachment_ids += attachment_id
-
-        invoice = (
-            self.env.ref("account_edi_finvoice.edi_finvoice_3_0")
-            .with_company(company_id)
-            ._create_invoice_from_attachment(finvoice)
-        )
+                attachment_ids += ir_attachment.create(values)
 
         if not invoice:
             raise ValidationError(_("Could not create invoice"))
