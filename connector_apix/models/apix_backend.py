@@ -551,7 +551,12 @@ class ApixBackend(models.Model):
                 # The actual invoice data
                 invoice = self.env["account.move"]._import_finvoice(
                     ET.fromstring(file_data),
-                    self.env["account.move"].create({"move_type": "in_invoice"}),
+                    self.env["account.move"].create(
+                        {
+                            "move_type": "in_invoice",
+                            "company_id": company_id,
+                        }
+                    ),
                     company_id,
                 )
             else:
