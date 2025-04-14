@@ -5,7 +5,8 @@
 
 # APIX Connector
 
--
+Addons for sending and receiving invoices via APIX
+(https://apix.fi/)
 
 <!-- /!\ do not modify below this line -->
 

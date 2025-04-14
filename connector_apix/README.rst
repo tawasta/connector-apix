@@ -25,12 +25,12 @@ Configuration
 
 Usage
 =====
-\-
+- If invoice transmit method is einvoice or printing service, a button for sending will appear
+- A scheduled job will fetch purchase invoices periodically
 
 Known issues / Roadmap
 ======================
-- Sending attachments is not supported
-- markReceived is not working: we are re-fetching all invoices
+- markReceived is not working: purchase invoices are being unnecessarily re-fetches
 
 Credits
 =======
