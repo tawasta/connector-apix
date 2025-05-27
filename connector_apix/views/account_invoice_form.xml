@@ -10,7 +10,7 @@
                 <field
                     name="date_einvoice_sent"
                     invisible="not date_einvoice_sent"
-                    readonly="1"
+                    readonly="True"
                 />
             </field>
 
@@ -50,16 +50,16 @@
                     groups="base.group_system"
                 >
                     <field name="apix_bind_ids">
-                        <tree create="false" delete="false">
-                            <field name="backend_id" readonly="1" />
-                            <field name="odoo_id" readonly="1" />
-                            <field name="apix_batch_id" readonly="1" />
+                        <list create="false" delete="false" editable="bottom">
+                            <field name="backend_id" readonly="True" />
+                            <field name="odoo_id" readonly="True" />
+                            <field name="apix_batch_id" readonly="True" />
                             <field
                                 name="apix_accepted_document_id"
-                                readonly="1"
+                                readonly="True"
                             />
-                            <field name="apix_cost_in_credits" readonly="1" />
-                        </tree>
+                            <field name="apix_cost_in_credits" readonly="True" />
+                        </list>
                     </field>
                 </page>
             </xpath>

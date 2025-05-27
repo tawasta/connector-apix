@@ -6,6 +6,8 @@ from lxml import etree
 
 from odoo import _, fields, models
 from odoo.exceptions import ValidationError
+from odoo.addons.connector_apix.contants import APIX_CHANNEL
+
 
 _logger = logging.getLogger(__name__)
 
@@ -19,8 +21,11 @@ class AccountMove(models.Model):
 
             if len(self) > 1:
                 # Add sending to queue
-                job_desc = _("APIX send invoice '%s'") % record.number
-                record.with_delay(description=job_desc).einvoice_send()
+                job_kwargs = {
+                    'description': _("APIX send invoice '%s'") % record.number,
+                    'channel': APIX_CHANNEL,
+                }
+                record.with_delay(**job_kwargs).einvoice_send()
             else:
                 # Send eInvoice now
                 record.einvoice_send()
