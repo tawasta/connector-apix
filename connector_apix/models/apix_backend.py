@@ -12,6 +12,8 @@ from lxml import etree as ET
 
 from odoo import _, fields, models
 from odoo.exceptions import ValidationError
+from odoo.addons.connector_apix.contants import APIX_CHANNEL
+
 
 _logger = logging.getLogger(__name__)
 
@@ -144,25 +146,25 @@ class ApixBackend(models.Model):
     # CustomerNumber
     customer_number = fields.Char(
         string="Customer number",
-        readonly=1,
+        readonly=True,
     )
 
     # ContactPerson
     contact_person = fields.Char(
         string="Contact person",
-        readonly=1,
+        readonly=True,
     )
 
     # Email
     contact_email = fields.Char(
         string="Contact email",
-        readonly=1,
+        readonly=True,
     )
 
     # OwnerId
     owner_id = fields.Char(
         string="Owner ID",
-        readonly=1,
+        readonly=True,
     )
 
     # Odoo-settings
@@ -213,18 +215,22 @@ class ApixBackend(models.Model):
     def action_einvoice_fetch(self):
         for record in self:
             # Add fetching to queue
-            job_desc = _("APIX fetch invoices for '%s'") % record.name
-            record.with_company(record.company_id.id).with_delay(
-                description=job_desc
-            ).list_invoices(refetch=False)
+            job_kwargs = {
+                "description": _("APIX fetch invoices for '%s'") % record.name,
+                "channel": APIX_CHANNEL,
+            }
+            record.with_company(record.company_id.id) \
+                .with_delay(**job_kwargs).list_invoices(refetch=False)
 
     def action_einvoice_refetch(self):
         for record in self:
             # Add fetching to queue
-            job_desc = _("APIX refetch invoices for '%s'") % record.name
-            record.with_company(record.company_id.id).with_delay(
-                description=job_desc
-            ).list_invoices(refetch=True)
+            job_kwargs = {
+                "description": _("APIX refetch invoices for '%s'") % record.name,
+                "channel": APIX_CHANNEL,
+            }
+            record.with_company(record.company_id.id) \
+                .with_delay(**job_kwargs).list_invoices(refetch=True)
 
     def list_invoices(self, refetch=False):
         """
@@ -266,10 +272,12 @@ class ApixBackend(models.Model):
                 or refetch
                 and storage_status == "RECEIVED"
             ):
-                job_desc = _(f"APIX import invoice '{document_id}' from {sender_name}")
-                self.with_company(self.company_id.id).with_delay(
-                    description=job_desc
-                ).download_invoice(storage_id, storage_key)
+                job_kwargs = {
+                    'description': _(f'APIX import invoice "{document_id}" from {sender_name}'),
+                    'channel': APIX_CHANNEL,
+                }
+                self.with_company(self.company_id.id) \
+                    .with_delay(**job_kwargs).download_invoice(storage_id, storage_key)
 
     def download_invoice(self, storage_id, storage_key):
         self.ensure_one()
