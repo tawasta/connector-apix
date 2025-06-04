@@ -15,10 +15,6 @@ class ApixAccountInvoice(models.Model):
 
         AccountInvoiceImport = self.env["account.invoice.import"]
 
-        ctx = dict(
-            force_company=finvoice.company_id.id,
-        )
-
         import_config_id = self.env["account.invoice.import.config"].search(
             [
                 ("company_id", "=", finvoice.company_id.id),
@@ -33,7 +29,9 @@ class ApixAccountInvoice(models.Model):
         )
 
         # Launch the import wizard programmatically
-        importer_wizard = AccountInvoiceImport.with_context(ctx).create(values)
+        importer_wizard = AccountInvoiceImport.with_context(
+            force_company=finvoice.company_id.id
+        ).create(values)
 
         res = importer_wizard.import_invoice()
         res_id = res.get("res_id")
