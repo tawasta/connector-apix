@@ -12,8 +12,8 @@ from lxml import etree as ET
 
 from odoo import _, fields, models
 from odoo.exceptions import ValidationError
-from odoo.addons.connector_apix.contants import APIX_CHANNEL
 
+from ..constants import APIX_CHANNEL
 
 _logger = logging.getLogger(__name__)
 
@@ -41,7 +41,6 @@ class ApixBackend(models.Model):
 
     # Backends start as unconfirmed
     state = fields.Selection(
-        string="State",
         selection=[
             ("unconfirmed", "Unconfirmed"),
             ("confirmed", "Confirmed"),
@@ -58,12 +57,11 @@ class ApixBackend(models.Model):
 
     # Apix username (email)
     username = fields.Char(
-        string="Username", required=True, help="Username used to login to laskumappi.fi"
+        required=True, help="Username used to login to laskumappi.fi"
     )
 
     # Apix password
     password = fields.Char(
-        string="Password",
         required=True,
         copy=False,
         help="Password used to login to laskumappi.fi",
@@ -71,7 +69,6 @@ class ApixBackend(models.Model):
 
     # Apix API version
     version = fields.Selection(
-        string="Version",
         selection=[("1.14", "v1.14")],
         default="1.14",
         required=True,
@@ -79,7 +76,6 @@ class ApixBackend(models.Model):
 
     # Apix environment
     environment = fields.Selection(
-        string="Environment",
         selection=[("test", "Test"), ("production", "Production")],
         default="test",
         required=True,
@@ -94,7 +90,6 @@ class ApixBackend(models.Model):
     # An optional prefix for business ids.
     # Apix may assign this to virtual operators
     prefix = fields.Char(
-        string="Prefix",
         help="Optional business code prefix. "
         "Some virtual operators use these. "
         "If you don't know what this is, leave it empty",
@@ -219,18 +214,20 @@ class ApixBackend(models.Model):
                 "description": _("APIX fetch invoices for '%s'") % record.name,
                 "channel": APIX_CHANNEL,
             }
-            record.with_company(record.company_id.id) \
-                .with_delay(**job_kwargs).list_invoices(refetch=False)
+            record.with_company(record.company_id.id).with_delay(
+                **job_kwargs
+            ).list_invoices(refetch=False)
 
     def action_einvoice_refetch(self):
         for record in self:
             # Add fetching to queue
             job_kwargs = {
-                "description": _("APIX refetch invoices for '%s'") % record.name,
+                "description": _("APIX refetch invoices for '{}'").format(record.name),
                 "channel": APIX_CHANNEL,
             }
-            record.with_company(record.company_id.id) \
-                .with_delay(**job_kwargs).list_invoices(refetch=True)
+            record.with_company(record.company_id.id).with_delay(
+                **job_kwargs
+            ).list_invoices(refetch=True)
 
     def list_invoices(self, refetch=False):
         """
@@ -246,7 +243,7 @@ class ApixBackend(models.Model):
         # Fetch einvoices
         invoices = self.ListInvoiceZIPs()
 
-        _logger.debug("Invoice XML: %s" % ET.tostring(invoices, pretty_print=True))
+        _logger.debug(f"Invoice XML: {ET.tostring(invoices, pretty_print=True)}")
         for invoice in invoices.findall(".//Group"):
             storage_id = invoice.find(".//Value[@type='StorageID']").text
             storage_key = invoice.find(".//Value[@type='StorageKey']").text
@@ -273,11 +270,14 @@ class ApixBackend(models.Model):
                 and storage_status == "RECEIVED"
             ):
                 job_kwargs = {
-                    'description': _(f'APIX import invoice "{document_id}" from {sender_name}'),
-                    'channel': APIX_CHANNEL,
+                    "description": _(
+                        f'APIX import invoice "{document_id}" from {sender_name}'
+                    ),
+                    "channel": APIX_CHANNEL,
                 }
-                self.with_company(self.company_id.id) \
-                    .with_delay(**job_kwargs).download_invoice(storage_id, storage_key)
+                self.with_company(self.company_id.id).with_delay(
+                    **job_kwargs
+                ).download_invoice(storage_id, storage_key)
 
     def download_invoice(self, storage_id, storage_key):
         self.ensure_one()
@@ -298,7 +298,7 @@ class ApixBackend(models.Model):
 
         # Strip the last "+"
         digest_src = digest_src[:-1]
-        _logger.debug("Calculating digest from %s" % digest_src)
+        _logger.debug(f"Calculating digest from '{digest_src}'")
         digest = "SHA-256:" + hashlib.sha256(digest_src.encode("utf-8")).hexdigest()
 
         return digest
@@ -340,20 +340,20 @@ class ApixBackend(models.Model):
             else:
                 url = "https://test-api.apix.fi/"
 
-        url += "%s?" % command
+        url += f"{command}?"
 
         for key, value in variables.items():
-            url += "%s=%s&" % (key, value)  # Add variables to the url
+            url += f"{key}={value}&"  # Add variables to the url
 
         if variables:
             url = url.rstrip("&")  # Strip the last &
 
-        _logger.debug("Using url %s" % url)
+        _logger.debug(f"Using url '{url}")
 
         return url
 
     def get_values_from_url(self, url):
-        response = requests.get(url)
+        response = requests.get(url, timeout=30)
         html = response.text.encode("latin-1")
         root = ET.fromstring(html)
 
@@ -364,7 +364,7 @@ class ApixBackend(models.Model):
         )
         res_free_text = " ".join([status.text for status in root.findall("FreeText")])
 
-        msg = "%s [%s]: %s" % (res_status, res_status_code, res_free_text)
+        msg = f"{res_status} [{res_status_code}]: {res_free_text}"
 
         if res_status == "ERR":
             _logger.warning(msg)  # Log error message and error
@@ -478,7 +478,7 @@ class ApixBackend(models.Model):
         values.pop("TraKey", None)
         values.pop("StorageKey", None)
 
-        _logger.debug("Using values %s" % values)
+        _logger.debug(f"Using values '{values}")
 
         return values
 
@@ -490,7 +490,7 @@ class ApixBackend(models.Model):
         url = self.get_url(command, values)
 
         # Post the file to the server
-        res = requests.put(url, data=payload)
+        res = requests.put(url, data=payload, timeout=30)
         res.raise_for_status()
 
         utf8_parser = ET.XMLParser(encoding="utf-8")
@@ -509,7 +509,7 @@ class ApixBackend(models.Model):
         url = self.get_url(command, values)
 
         # Get invoices from server
-        res = requests.get(url)
+        res = requests.get(url, timeout=30)
         res.raise_for_status()
 
         utf8_parser = ET.XMLParser(encoding="utf-8")
@@ -532,7 +532,7 @@ class ApixBackend(models.Model):
         url = self.get_url(command, values)
 
         # Download invoice from server
-        res = requests.get(url)
+        res = requests.get(url, timeout=30)
         res.raise_for_status()
 
         zip_file = ZipFile(BytesIO(res.content))
@@ -578,14 +578,14 @@ class ApixBackend(models.Model):
         return invoice
 
     def validateResponse(self, response):
-        _logger.debug("Response: %s" % ET.tostring(response))
+        _logger.debug(f"Response: {ET.tostring(response)}")
 
         response_status = response.find(".//Status")
 
         if response_status is None:
             raise ValidationError(_("Invalid response: response status not found"))
 
-        _logger.debug("Response status: '%s'" % response_status.text)
+        _logger.debug(f"Response status: '{response_status.text}'")
 
         if response_status.text == "ERR":
             try:
@@ -604,7 +604,7 @@ class ApixBackend(models.Model):
                 statuscode = _("Unknown status code")
                 _logger.error(e)
 
-            msg = "API Error (%s): %s" % (statuscode, error)
+            msg = f"API Error ({statuscode}): {error}"
 
             # Replace the support address shown in the message
             if self.support_email:
