@@ -21,7 +21,7 @@
 {
     "name": "APIX Connector",
     "summary": "APIX EDI connector for receiving and sending eInvoices",
-    "version": "18.0.1.0.1",
+    "version": "18.0.1.0.2",
     "category": "Connector",
     "website": "https://github.com/tawasta/connector-apix",
     "author": "Futural",
