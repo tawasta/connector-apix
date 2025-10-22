@@ -6,6 +6,7 @@ from lxml import etree
 
 from odoo import _, fields, models
 from odoo.exceptions import ValidationError
+from odoo.tools.safe_eval import safe_eval, time
 
 from ...constants import APIX_CHANNEL
 
@@ -165,6 +166,23 @@ class AccountMove(models.Model):
 
             # Add printed PDF
             payload_zip.writestr("invoice.pdf", inv_pdf[0])
+            # Save PDF as attachment
+            if inv_report.print_report_name:
+                report_name = safe_eval(
+                    inv_report.print_report_name, {"object": self, "time": time}
+                )
+            else:
+                report_name = f"{self.name}.pdf"
+
+            self.env["ir.attachment"].create(
+                {
+                    "name": report_name,
+                    "raw": inv_pdf[0],
+                    "mimetype": "application/pdf",
+                    "res_model": "account.move",
+                    "res_id": self.id,
+                }
+            )
 
             # Add attachments
             if attachments_payload:
