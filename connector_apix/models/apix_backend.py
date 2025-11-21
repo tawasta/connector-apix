@@ -39,7 +39,6 @@ class ApixBackend(models.Model):
 
     # Backends start as unconfirmed
     state = fields.Selection(
-        string="State",
         selection=[
             ("unconfirmed", "Unconfirmed"),
             ("confirmed", "Confirmed"),
@@ -56,12 +55,11 @@ class ApixBackend(models.Model):
 
     # Apix username (email)
     username = fields.Char(
-        string="Username", required=True, help="Username used to login to laskumappi.fi"
+        required=True, help="Username used to login to laskumappi.fi"
     )
 
     # Apix password
     password = fields.Char(
-        string="Password",
         required=True,
         copy=False,
         help="Password used to login to laskumappi.fi",
@@ -69,7 +67,6 @@ class ApixBackend(models.Model):
 
     # Apix API version
     version = fields.Selection(
-        string="Version",
         selection=[("1.14", "v1.14")],
         default="1.14",
         required=True,
@@ -77,7 +74,6 @@ class ApixBackend(models.Model):
 
     # Apix environment
     environment = fields.Selection(
-        string="Environment",
         selection=[("test", "Test"), ("production", "Production")],
         default="test",
         required=True,
@@ -92,21 +88,19 @@ class ApixBackend(models.Model):
     # An optional prefix for business ids.
     # Apix may assign this to virtual operators
     prefix = fields.Char(
-        string="Prefix",
         help="Optional business code prefix. "
         "Some virtual operators use these. "
         "If you don't know what this is, leave it empty",
     )
 
     transfer_id = fields.Char(
-        string="Transfer id",
+        string="Transfer ID",
         readonly=True,
         copy=False,
         help="The identification used for sending and receiving invoices",
     )
 
     transfer_key = fields.Char(
-        string="Transfer key",
         readonly=True,
         copy=False,
         help="The password used for sending and receiving invoices",
@@ -214,13 +208,15 @@ class ApixBackend(models.Model):
         for record in self:
             # Add fetching to queue
             job_desc = _("APIX fetch invoices for '%s'") % record.name
-            record.with_delay(description=job_desc).list_invoices(refetch=False)
+            record.with_company(record.company_id.id).with_delay(
+                description=job_desc
+            ).list_invoices(refetch=False)
 
     def action_einvoice_refetch(self):
         for record in self:
             # Add fetching to queue
             job_desc = _("APIX refetch invoices for '%s'") % record.name
-            record.with_context(company_id=record.company_id.id).with_delay(
+            record.with_company(record.company_id.id).with_delay(
                 description=job_desc
             ).list_invoices(refetch=True)
 
@@ -265,9 +261,9 @@ class ApixBackend(models.Model):
                 and storage_status == "RECEIVED"
             ):
                 job_desc = _(f"APIX import invoice '{document_id}' from {sender_name}")
-                self.with_delay(description=job_desc).download_invoice(
-                    storage_id, storage_key
-                )
+                self.with_company(self.company_id.id).with_delay(
+                    description=job_desc
+                ).download_invoice(storage_id, storage_key)
 
     def download_invoice(self, storage_id, storage_key):
         self.ensure_one()
@@ -330,20 +326,22 @@ class ApixBackend(models.Model):
             else:
                 url = "https://test-api.apix.fi/"
 
-        url += "%s?" % command
+        url += f"{command}?"
 
         for key, value in variables.items():
-            url += "%s=%s&" % (key, value)  # Add variables to the url
+            # Add variables to the url
+            url += f"{key}={value}&"
 
         if variables:
-            url = url.rstrip("&")  # Strip the last &
+            # Strip the last &
+            url = url.rstrip("&")
 
         _logger.debug("Using url %s" % url)
 
         return url
 
     def get_values_from_url(self, url):
-        response = requests.get(url)
+        response = requests.get(url, timeout=30)
         html = response.text.encode("latin-1")
         root = ET.fromstring(html)
 
@@ -354,7 +352,7 @@ class ApixBackend(models.Model):
         )
         res_free_text = " ".join([status.text for status in root.findall("FreeText")])
 
-        msg = "%s [%s]: %s" % (res_status, res_status_code, res_free_text)
+        msg = f"{res_status} [{res_status_code}]: {res_free_text}"
 
         if res_status == "ERR":
             _logger.warning(msg)  # Log error message and error
@@ -480,7 +478,7 @@ class ApixBackend(models.Model):
         url = self.get_url(command, values)
 
         # Post the file to the server
-        res = requests.put(url, data=payload)
+        res = requests.put(url, data=payload, timeout=30)
         res.raise_for_status()
 
         utf8_parser = ET.XMLParser(encoding="utf-8")
@@ -496,10 +494,10 @@ class ApixBackend(models.Model):
         values = self.get_default_url_attributes(show_soft=False, show_ver=False)
 
         command = "list2"
-        url = self.get_url(command, values)
+        url = self.get_url(command, values, timeout=30)
 
         # Get invoices from server
-        res = requests.get(url)
+        res = requests.get(url, timeout=30)
         res.raise_for_status()
 
         utf8_parser = ET.XMLParser(encoding="utf-8")
@@ -522,38 +520,43 @@ class ApixBackend(models.Model):
         url = self.get_url(command, values)
 
         # Download invoice from server
-        res = requests.get(url)
+        res = requests.get(url, timeout=30)
         res.raise_for_status()
 
         zip_file = ZipFile(BytesIO(res.content))
         mime = MimeTypes()
 
         ir_attachment = self.env["ir.attachment"]
-
-        finvoice = False
         attachment_ids = self.env["ir.attachment"]
+
+        invoice = False
         for file_name in zip_file.namelist():
             # Save to attachments without res_id
+            file_data = zip_file.read(file_name)
+            datas = base64.b64encode(file_data)
             values = dict(
                 name=file_name,
                 type="binary",
-                datas=base64.b64encode(zip_file.read(file_name)),
+                datas=datas,
                 res_model="account.move",
                 mimetype=mime.guess_type(file_name)[0],
                 company_id=company_id,
             )
 
-            attachment_id = ir_attachment.create(values)
             if file_name == "invoice.xml":
-                finvoice = attachment_id
+                # The actual invoice data
+                invoice = self.env["account.move"]._import_finvoice(
+                    ET.fromstring(file_data),
+                    self.env["account.move"].create(
+                        {
+                            "move_type": "in_invoice",
+                            "company_id": company_id,
+                        }
+                    ),
+                    company_id,
+                )
             else:
-                attachment_ids += attachment_id
-
-        invoice = (
-            self.env.ref("account_edi_finvoice.edi_finvoice_3_0")
-            .with_company(company_id)
-            ._create_invoice_from_attachment(finvoice)
-        )
+                attachment_ids += ir_attachment.create(values)
 
         if not invoice:
             raise ValidationError(_("Could not create invoice"))
@@ -589,7 +592,7 @@ class ApixBackend(models.Model):
                 statuscode = _("Unknown status code")
                 _logger.error(e)
 
-            msg = "API Error (%s): %s" % (statuscode, error)
+            msg = f"API Error ({statuscode}): {error}"
 
             # Replace the support address shown in the message
             if self.support_email:
