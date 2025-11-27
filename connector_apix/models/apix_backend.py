@@ -494,7 +494,7 @@ class ApixBackend(models.Model):
         values = self.get_default_url_attributes(show_soft=False, show_ver=False)
 
         command = "list2"
-        url = self.get_url(command, values, timeout=30)
+        url = self.get_url(command, values)
 
         # Get invoices from server
         res = requests.get(url, timeout=30)
