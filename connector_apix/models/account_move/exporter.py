@@ -273,7 +273,7 @@ class AccountMove(models.Model):
         elif self.transmit_method_code not in ["einvoice", "printing_service"]:
             msg = _("This invoice has been marked to be sent manually.")
 
-        elif not self.partner_bank_id:
+        elif self.move_type == 'out_invoice' and not self.partner_bank_id:
             msg = _("Please define a bank account for the invoice.")
 
         else:
