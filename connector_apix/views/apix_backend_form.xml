@@ -5,7 +5,7 @@
         <field name="name">apix.backend.form</field>
         <field name="model">apix.backend</field>
         <field name="arch" type="xml">
-            <form string="Apix Backend">
+            <form string="APIX Backend">
                 <header>
                     <button
                         name="action_authenticate"
