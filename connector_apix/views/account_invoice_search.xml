@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <record id="view_account_invoice_filter" model="ir.ui.view">
+        <field name="name">account.invoice.select.apix</field>
+        <field name="model">account.move</field>
+        <field name="inherit_id" ref="account.view_account_invoice_filter" />
+        <field name="arch" type="xml">
+
+            <filter name="to_check" position="after">
+                <separator />
+                <filter
+                    string="eInvoice sent"
+                    name="einvoice_sent"
+                    domain="[('date_einvoice_sent', '!=', False)]"
+                />
+                <filter
+                    string="eInvoice not sent"
+                    name="einvoice_not_sent"
+                    domain="[('date_einvoice_sent', '=', False)]"
+                />
+            </filter>
+
+        </field>
+    </record>
+</odoo>

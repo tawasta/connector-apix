@@ -21,7 +21,7 @@
 {
     "name": "APIX Connector",
     "summary": "APIX EDI connector for receiving and sending eInvoices",
-    "version": "17.0.1.0.4",
+    "version": "17.0.1.1.0",
     "category": "Connector",
     "website": "https://github.com/tawasta/connector-apix",
     "author": "Futural",
@@ -42,7 +42,10 @@
     "data": [
         "data/ir_cron.xml",
         "security/ir.model.access.csv",
+        "views/account_invoice_action.xml",
         "views/account_invoice_form.xml",
+        "views/account_invoice_search.xml",
+        "views/account_invoice_tree.xml",
         "views/apix_backend_form.xml",
         "views/apix_backend_menu.xml",
     ],
