@@ -122,7 +122,7 @@ class ApixBackend(models.Model):
 
     # Qualifier for the identification; y-tunnus, orgnr etc.
     # Usually business id (y-tunnus)
-    id_qualifier = fields.Char(
+    id_qualifier = fields.Selection(
         string="ID Qualifier",
         selection=[("y-tunnus", "Business ID")],
         default="y-tunnus",
@@ -138,25 +138,25 @@ class ApixBackend(models.Model):
     # CustomerNumber
     customer_number = fields.Char(
         string="Customer number",
-        readonly=1,
+        readonly=True,
     )
 
     # ContactPerson
     contact_person = fields.Char(
         string="Contact person",
-        readonly=1,
+        readonly=True,
     )
 
     # Email
     contact_email = fields.Char(
         string="Contact email",
-        readonly=1,
+        readonly=True,
     )
 
     # OwnerId
     owner_id = fields.Char(
         string="Owner ID",
-        readonly=1,
+        readonly=True,
     )
 
     # Odoo-settings
@@ -248,6 +248,8 @@ class ApixBackend(models.Model):
                 # Storage id is always found, but is less useful
                 document_id = storage_id
 
+            _logger.debug(f"Found document id '{document_id}'")
+
             # Try to get sender name
             sender_name_element = invoice.find(".//Value[@type='SenderName']")
             if sender_name_element is not None:
@@ -255,12 +257,14 @@ class ApixBackend(models.Model):
             else:
                 sender_name = "Unknown"
 
+            _logger.debug(f"Found sender name '{sender_name}'")
+
             if (
                 storage_status == "UNRECEIVED"
                 or refetch
                 and storage_status == "RECEIVED"
             ):
-                job_desc = _(f"APIX import invoice '{document_id}' from {sender_name}")
+                job_desc = "APIX import invoice '{document_id}' from {sender_name}"
                 self.with_company(self.company_id.id).with_delay(
                     description=job_desc
                 ).download_invoice(storage_id, storage_key)
@@ -271,7 +275,7 @@ class ApixBackend(models.Model):
         # Download invoice
         res = self.Download(storage_id, storage_key)
 
-        return _(f"Imported invoice with id '{res.id}'")
+        return _("Imported invoice with id '%s'", res.id)
 
     # endregion
 

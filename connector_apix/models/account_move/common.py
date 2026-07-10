@@ -36,16 +36,34 @@ class AccountMove(models.Model):
         return backend
 
     def action_einvoice_send(self):
-        for record in self:
-            record.validate_einvoice()
+        count = len(self)
 
-            if len(self) > 1:
+        for record in self:
+            if count > 1:
                 # Add sending to queue
-                job_desc = _("APIX send invoice '%s'") % record.number
+                job_desc = _("APIX send invoice '%s'", record.name)
                 record.with_delay(description=job_desc).einvoice_send()
             else:
                 # Send eInvoice now
                 record.einvoice_send()
+
+        if count > 1:
+            # TODO: Show errors to users (let's do this in 19.0/20.0)
+            return {
+                "type": "ir.actions.client",
+                "tag": "display_notification",
+                "params": {
+                    "title": _("Processing"),
+                    "message": _(
+                        "Processing %s invoices in the background. "
+                        "Please check queue jobs for errors, "
+                        "or try to send failed invoices manually one at the time",
+                        count,
+                    ),
+                    "type": "success",
+                    "sticky": True,
+                },
+            }
 
     def _get_finvoice_object(self):
         finvoice_object = super()._get_finvoice_object()
@@ -173,10 +191,15 @@ class AccountMove(models.Model):
 
     def einvoice_send(self):
         for record in self:
+            if record.apix_bind_ids:
+                return _("This invoice has already been sent as an eInvoice")
+
+            record.validate_einvoice()
+
             # Transmit method name
             transmit_method = record.transmit_method_id.name
 
-            _logger.debug(_(f"Sending '{record.name}' as '{transmit_method}'"))
+            _logger.debug(f"Sending '{record.name}' as '{transmit_method}'")
 
             backend = record.get_apix_backend()
 
@@ -200,7 +223,7 @@ class AccountMove(models.Model):
             except ValidationError as error:
                 raise error
 
-            _logger.debug(_(f"Response for '{record.name}': {response}"))
+            _logger.debug(f"Response for '{record.name}': {response}")
 
             record.date_einvoice_sent = fields.Date.today()
             record.is_move_sent = True
@@ -234,21 +257,19 @@ class AccountMove(models.Model):
             # Create a binding
             self.sudo().env["apix.account.invoice"].create(binding_values)
 
-            record.message_post(body=_(f"Invoice sent as '{transmit_method}'"))
-            _logger.debug(_(f"Sent '{record.name}' as '{transmit_method}'"))
+            record.message_post(body=_("Invoice sent as '%s'", transmit_method))
+            _logger.debug(f"Sent '{record.name}' as '{transmit_method}'")
 
     def validate_einvoice(self):
         result = False
         msg = False
+        self.ensure_one()
 
-        # Invoice can be sent only when it is open or paid
-        # open: normal invoice
-        # paid: for resending (original invoice is not received or not paid)
+        # Invoice can be sent only when it's posted
         if self.state not in ["posted"]:
             msg = _("You can only send eInvoice after the invoice is posted")
-
-        # Check these only for eInvoice
         elif self.transmit_method_code in ["einvoice"]:
+            # eInvoice validation checks
             # VAT number is missing
             if not self.partner_id.vat:
                 msg = (
